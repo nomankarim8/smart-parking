@@ -1,0 +1,4 @@
+# User Manual\n\nLogin, open Vehicle Entry, upload a plate image, verify the returned plate/confidence, choose category and confirm entry. The system assigns a compatible available slot.\n\nAt exit, enter the normalized plate, choose payment method, and submit checkout. The system calculates duration/fee, records payment and releases the slot.\n\nUse Parking Slots for live occupancy, Vehicles for registry, History for records/export, Blacklist for security entries, Cameras for configured sources, and Settings for operational configuration readouts.\nEOF
+cat > /mnt/data/smart-parking/ai-models/README.md <<'EOF'
+# AI Models\n\nPlace compatible trained model weights here:\n- `plate_yolo.pt` — license plate detector\n- `vehicle_yolo.pt` — vehicle detector (optional extension)\n\nDo not commit proprietary or large weight files to source control unless licensing permits it.\nEOF
+cat > /mnt/data/smart-parking/backend/app/services/__init__.py <<'EOF'

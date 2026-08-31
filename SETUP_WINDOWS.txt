@@ -1,0 +1,25 @@
+SMART PARKING - WINDOWS QUICK SETUP
+
+1) Install Python 3.11+, Node.js LTS, MySQL 8 or XAMPP MySQL.
+2) Open this project folder in VS Code.
+3) Run database/schema.sql then database/seeds.sql in MySQL Workbench/phpMyAdmin.
+   If you used an old version of the project, run database/reset_schema.sql FIRST, then schema.sql and seeds.sql.
+4) Copy backend/.env.example to backend/.env and set DB_PASSWORD and SECRET_KEY.
+5) Terminal 1:
+   cd backend
+   py -3.11 -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   python main.py
+6) Terminal 2:
+   cd frontend
+   npm install
+   npm run dev
+7) Open http://localhost:5173
+8) Demo login: admin / Admin@12345
+9) Swagger: http://localhost:8000/docs
+
+ALPR:
+- With no YOLO model file, the UI explicitly reports manual verification/fallback mode.
+- Put a trained compatible plate model at ai-models/plate_yolo.pt to enable YOLO plate localization.
+- EasyOCR loads lazily on first ALPR request.

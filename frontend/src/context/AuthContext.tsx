@@ -1,0 +1,5 @@
+import {createContext,useContext,useEffect,useState,ReactNode} from 'react';import api from '../services/api';import type {User} from '../types';
+interface Ctx{user:User|null;login:(u:string,p:string)=>Promise<void>;logout:()=>void;loading:boolean}
+const AuthContext=createContext<Ctx>({user:null,login:async()=>{},logout:()=>{},loading:true});
+export function AuthProvider({children}:{children:ReactNode}){const [user,setUser]=useState<User|null>(null),[loading,setLoading]=useState(true);useEffect(()=>{const t=localStorage.getItem('smart_parking_token');if(!t)return setLoading(false);api.get('/auth/me').then(r=>setUser(r.data)).catch(()=>localStorage.removeItem('smart_parking_token')).finally(()=>setLoading(false))},[]);const login=async(username:string,password:string)=>{const r=await api.post('/auth/login',{username,password});localStorage.setItem('smart_parking_token',r.data.access_token);setUser(r.data.user)};const logout=()=>{localStorage.removeItem('smart_parking_token');setUser(null)};return <AuthContext.Provider value={{user,login,logout,loading}}>{children}</AuthContext.Provider>};
+export const useAuth=()=>useContext(AuthContext)
