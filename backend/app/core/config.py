@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    CORS_ORIGINS: list[str] = []
     OCR_ENABLED: bool = True
     PLATE_MODEL_PATH: str = "../ai-models/plate_yolo.pt"
     VEHICLE_MODEL_PATH: str = "../ai-models/vehicle_yolo.pt"
