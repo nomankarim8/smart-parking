@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DB_NAME: str = "smart_parking_db"
     SECRET_KEY: str = "change-me"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440 
     CORS_ORIGINS: list[str] = []
     OCR_ENABLED: bool = True
     PLATE_MODEL_PATH: str = "../ai-models/plate_yolo.pt"
