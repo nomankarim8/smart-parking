@@ -14,4 +14,4 @@ def decode_token(token:str)->str:
     payload=jwt.decode(token,settings.SECRET_KEY,algorithms=[settings.ALGORITHM])
     sub=payload.get("sub")
     if not sub: raise JWTError("Missing subject")
-    return str(sub)
+    return str(sub) 
