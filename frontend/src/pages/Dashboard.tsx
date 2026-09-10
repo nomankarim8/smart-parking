@@ -4,7 +4,7 @@ import type { Stats, Slot } from '../types';
 import SlotGrid from '../components/SlotGrid';
 import StatCard from '../components/StatCard';
 import CameraSidebar from '../components/CameraSidebar';
-import {
+import {     
   Activity,
   CarFront,
   CircleDollarSign,
