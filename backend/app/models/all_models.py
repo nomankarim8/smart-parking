@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Numeric, Text, JSON, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
-import enum 
+import enum
 
 class RoleName(str,enum.Enum): SUPER_ADMIN="SUPER_ADMIN"; ADMIN="ADMIN"; OPERATOR="OPERATOR"; VIEWER="VIEWER"
 class SlotStatus(str,enum.Enum): AVAILABLE="AVAILABLE"; OCCUPIED="OCCUPIED"; RESERVED="RESERVED"; MAINTENANCE="MAINTENANCE"
@@ -10,6 +10,7 @@ class ParkingStatus(str,enum.Enum): PARKED="PARKED"; COMPLETED="COMPLETED"; CANC
 class PaymentMethod(str,enum.Enum): CASH="CASH"; CARD="CARD"; MOBILE_BANKING="MOBILE_BANKING"; ONLINE="ONLINE"
 class PaymentStatus(str,enum.Enum): PENDING="PENDING"; PAID="PAID"; FAILED="FAILED"; REFUNDED="REFUNDED"
 class CameraType(str,enum.Enum): USB="USB"; IP="IP"; RTSP="RTSP"; UPLOAD="UPLOAD"; DEMO="DEMO"
+class CameraRole(str,enum.Enum): ENTRY="ENTRY"; EXIT="EXIT"; PARKING_ZONE="PARKING_ZONE"
 class CameraStatus(str,enum.Enum): ONLINE="ONLINE"; OFFLINE="OFFLINE"; UNKNOWN="UNKNOWN"
 
 class Role(Base):
@@ -32,13 +33,28 @@ class PricingRule(Base):
     rule_id:Mapped[int]=mapped_column(primary_key=True); category_id:Mapped[int]=mapped_column(ForeignKey("vehicle_categories.category_id"),unique=True); hourly_rate:Mapped[float]=mapped_column(Numeric(10,2)); min_charge:Mapped[float]=mapped_column(Numeric(10,2),default=0); grace_period_minutes:Mapped[int]=mapped_column(Integer,default=15); daily_max_charge:Mapped[float|None]=mapped_column(Numeric(10,2)); overnight_charge:Mapped[float|None]=mapped_column(Numeric(10,2)); is_active:Mapped[bool]=mapped_column(Boolean,default=True)
 class Camera(Base):
     __tablename__="cameras"
-    camera_id:Mapped[int]=mapped_column(primary_key=True); camera_name:Mapped[str]=mapped_column(String(100),unique=True); location:Mapped[str]=mapped_column(String(160)); camera_type:Mapped[CameraType]=mapped_column(SAEnum(CameraType),default=CameraType.DEMO); stream_url:Mapped[str|None]=mapped_column(String(500)); status:Mapped[CameraStatus]=mapped_column(SAEnum(CameraStatus),default=CameraStatus.UNKNOWN); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+    camera_id:Mapped[int]=mapped_column(primary_key=True); camera_name:Mapped[str]=mapped_column(String(100),unique=True); location:Mapped[str]=mapped_column(String(160)); camera_role:Mapped[CameraRole]=mapped_column(SAEnum(CameraRole),default=CameraRole.PARKING_ZONE); camera_type:Mapped[CameraType]=mapped_column(SAEnum(CameraType),default=CameraType.DEMO); stream_url:Mapped[str|None]=mapped_column(String(500)); status:Mapped[CameraStatus]=mapped_column(SAEnum(CameraStatus),default=CameraStatus.UNKNOWN); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
 class ParkingRecord(Base):
     __tablename__="parking_records"
     record_id:Mapped[int]=mapped_column(primary_key=True); vehicle_id:Mapped[int]=mapped_column(ForeignKey("vehicles.vehicle_id")); slot_id:Mapped[int]=mapped_column(ForeignKey("parking_slots.slot_id")); entry_time:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); exit_time:Mapped[datetime|None]=mapped_column(DateTime); entry_image_url:Mapped[str|None]=mapped_column(String(500)); exit_image_url:Mapped[str|None]=mapped_column(String(500)); plate_image_url:Mapped[str|None]=mapped_column(String(500)); raw_ocr_text:Mapped[str|None]=mapped_column(String(255)); ocr_confidence:Mapped[float|None]=mapped_column(Numeric(5,4)); status:Mapped[ParkingStatus]=mapped_column(SAEnum(ParkingStatus),default=ParkingStatus.PARKED); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow); vehicle=relationship("Vehicle"); slot=relationship("ParkingSlot")
 class PlateDetection(Base):
     __tablename__="plate_detections"
-    detection_id:Mapped[int]=mapped_column(primary_key=True); camera_id:Mapped[int|None]=mapped_column(ForeignKey("cameras.camera_id",ondelete="SET NULL")); parking_record_id:Mapped[int|None]=mapped_column(ForeignKey("parking_records.record_id",ondelete="SET NULL")); detected_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); raw_text:Mapped[str|None]=mapped_column(String(255)); normalized_plate:Mapped[str|None]=mapped_column(String(80),index=True); confidence:Mapped[float]=mapped_column(Numeric(5,4),default=0); image_url:Mapped[str|None]=mapped_column(String(500)); verification_status:Mapped[str]=mapped_column(String(30),default="MANUAL_REQUIRED")
+    detection_id:Mapped[int]=mapped_column(primary_key=True)
+    camera_id:Mapped[int|None]=mapped_column(ForeignKey("cameras.camera_id",ondelete="SET NULL"))
+    parking_record_id:Mapped[int|None]=mapped_column(ForeignKey("parking_records.record_id",ondelete="SET NULL"))
+    detected_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+    raw_text:Mapped[str|None]=mapped_column(String(255))
+    normalized_plate:Mapped[str|None]=mapped_column(String(80),index=True)
+    region_name:Mapped[str|None]=mapped_column(String(80))
+    class_bn:Mapped[str|None]=mapped_column(String(20))
+    class_code:Mapped[str|None]=mapped_column(String(20),index=True)
+    series_number:Mapped[str|None]=mapped_column(String(2))
+    vehicle_number:Mapped[str|None]=mapped_column(String(4))
+    ocr_language:Mapped[str|None]=mapped_column(String(20))
+    vehicle_category:Mapped[str|None]=mapped_column(String(50))
+    confidence:Mapped[float]=mapped_column(Numeric(5,4),default=0)
+    image_url:Mapped[str|None]=mapped_column(String(500))
+    verification_status:Mapped[str]=mapped_column(String(30),default="MANUAL_REQUIRED")
 class Payment(Base):
     __tablename__="payments"
     payment_id:Mapped[int]=mapped_column(primary_key=True); record_id:Mapped[int]=mapped_column(ForeignKey("parking_records.record_id"),unique=True); total_duration_minutes:Mapped[int]=mapped_column(Integer); gross_amount:Mapped[float]=mapped_column(Numeric(10,2)); discount_amount:Mapped[float]=mapped_column(Numeric(10,2),default=0); net_amount:Mapped[float]=mapped_column(Numeric(10,2)); payment_method:Mapped[PaymentMethod]=mapped_column(SAEnum(PaymentMethod)); payment_status:Mapped[PaymentStatus]=mapped_column(SAEnum(PaymentStatus),default=PaymentStatus.PENDING); transaction_reference:Mapped[str|None]=mapped_column(String(120)); payment_time:Mapped[datetime|None]=mapped_column(DateTime); created_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); record=relationship("ParkingRecord")

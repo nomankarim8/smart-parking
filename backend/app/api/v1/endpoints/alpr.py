@@ -14,6 +14,8 @@ async def detect(file:UploadFile=File(...),_=Depends(current_user)):
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(400,"Please upload an image file")
     data=await file.read()
+    if not data:
+        raise HTTPException(400,"Uploaded image is empty")
     if len(data)>10*1024*1024:
         raise HTTPException(413,"Image is too large. Maximum size is 10 MB")
     suffix=Path(file.filename or ".jpg").suffix.lower() or ".jpg"

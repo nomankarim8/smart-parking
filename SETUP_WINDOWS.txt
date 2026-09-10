@@ -1,25 +1,22 @@
-SMART PARKING - WINDOWS QUICK SETUP
+SMART PARKING - WINDOWS SETUP
 
-1) Install Python 3.11+, Node.js LTS, MySQL 8 or XAMPP MySQL.
-2) Open this project folder in VS Code.
-3) Run database/schema.sql then database/seeds.sql in MySQL Workbench/phpMyAdmin.
-   If you used an old version of the project, run database/reset_schema.sql FIRST, then schema.sql and seeds.sql.
-4) Copy backend/.env.example to backend/.env and set DB_PASSWORD and SECRET_KEY.
-5) Terminal 1:
-   cd backend
-   py -3.11 -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
-   python main.py
-6) Terminal 2:
-   cd frontend
-   npm install
-   npm run dev
-7) Open http://localhost:5173
-8) Demo login: admin / Admin@12345
-9) Swagger: http://localhost:8000/docs
+1) Extract the folder and open it in VS Code.
+2) Start XAMPP MySQL (Apache is optional unless you use phpMyAdmin).
+3) Create the database from database/schema.sql, then run database/seeds.sql.
+4) Existing database users: run database/migration_camera_roles.sql and database/migration_bangla_plate.sql.
+5) In backend/: py -3.11 -m venv venv
+6) Activate: venv\Scripts\activate
+7) Install: pip install -r requirements.txt
+8) Copy backend/.env.example to backend/.env and set DB_PASSWORD/SECRET_KEY.
+9) Install Tesseract OCR for Windows with both 'eng' and 'ben' language data. Verify with: tesseract --list-langs
+10) Start backend: python main.py
+11) Open a second terminal: cd frontend && npm install && npm run dev
+12) Open http://localhost:5173
+13) Demo login: admin / Admin@12345
+14) Swagger: http://localhost:8000/docs
 
-ALPR:
-- With no YOLO model file, the UI explicitly reports manual verification/fallback mode.
-- Put a trained compatible plate model at ai-models/plate_yolo.pt to enable YOLO plate localization.
-- EasyOCR loads lazily on first ALPR request.
+ALPR notes:
+- Bengali input is normalized to English canonical plate text.
+- Examples: ঢাকা মেট্রো গ ১২-৩৪৫৬ -> DHAKA METRO GA 12-3456; ঢাকা মেট্রো ল ১৭-৭৫৪৪ -> DHAKA METRO LA 17-7544.
+- Low-confidence or structurally invalid OCR is flagged for manual verification.
+- For full-vehicle automatic plate localization, place a compatible trained plate detector at ai-models/plate_yolo.pt.

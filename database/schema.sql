@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS cameras (
   camera_id INT AUTO_INCREMENT PRIMARY KEY,
   camera_name VARCHAR(100) NOT NULL UNIQUE,
   location VARCHAR(160) NOT NULL,
+  camera_role ENUM('ENTRY','EXIT','PARKING_ZONE') NOT NULL DEFAULT 'PARKING_ZONE',
   camera_type ENUM('USB','IP','RTSP','UPLOAD','DEMO') NOT NULL DEFAULT 'DEMO',
   stream_url VARCHAR(500),
   status ENUM('ONLINE','OFFLINE','UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
@@ -98,11 +99,14 @@ CREATE TABLE IF NOT EXISTS plate_detections (
   detection_id INT AUTO_INCREMENT PRIMARY KEY,
   camera_id INT NULL, parking_record_id INT NULL,
   detected_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  raw_text VARCHAR(255), normalized_plate VARCHAR(80), confidence DECIMAL(5,4) NOT NULL DEFAULT 0,
+  raw_text VARCHAR(255), normalized_plate VARCHAR(80),
+  region_name VARCHAR(80), class_bn VARCHAR(20), class_code VARCHAR(20),
+  series_number VARCHAR(2), vehicle_number VARCHAR(4), ocr_language VARCHAR(20), vehicle_category VARCHAR(50),
+  confidence DECIMAL(5,4) NOT NULL DEFAULT 0,
   image_url VARCHAR(500), verification_status ENUM('AUTO_ACCEPTED','MANUAL_REQUIRED','MANUALLY_CORRECTED') NOT NULL DEFAULT 'MANUAL_REQUIRED',
   CONSTRAINT fk_detection_camera FOREIGN KEY(camera_id) REFERENCES cameras(camera_id) ON DELETE SET NULL,
   CONSTRAINT fk_detection_record FOREIGN KEY(parking_record_id) REFERENCES parking_records(record_id) ON DELETE SET NULL,
-  INDEX idx_detection_plate(normalized_plate), INDEX idx_detection_time(detected_at)
+  INDEX idx_detection_plate(normalized_plate), INDEX idx_detection_class(class_code), INDEX idx_detection_region(region_name), INDEX idx_detection_time(detected_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS payments (

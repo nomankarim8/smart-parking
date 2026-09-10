@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.all_models import Role,VehicleCategory,PricingRule,ParkingSlot,User,Camera
+from app.models.all_models import Role,VehicleCategory,PricingRule,ParkingSlot,User,Camera,CameraRole,CameraRole
 from app.core.security import hash_password
 
 def bootstrap(db:Session):
@@ -19,6 +19,8 @@ def bootstrap(db:Session):
             if not db.query(ParkingSlot).filter_by(slot_number=f"{prefix}{n:02d}").first(): db.add(ParkingSlot(slot_number=f"{prefix}{n:02d}",category_id=cat_id))
     if not db.query(User).filter_by(username="admin").first():
         role=db.query(Role).filter_by(role_name="SUPER_ADMIN").one(); db.add(User(username="admin",email="admin@smartparking.local",full_name="System Administrator",role_id=role.role_id,password_hash=hash_password("Admin@12345")))
-    for name,loc in [("ENTRY-01","Main Entry Gate"),("EXIT-01","Main Exit Gate"),("ZONE-A","Parking Zone A")]:
-        if not db.query(Camera).filter_by(camera_name=name).first(): db.add(Camera(camera_name=name,location=loc,camera_type="DEMO",status="ONLINE"))
+    for name,loc,role in [("ENTRY-01","Main Entry Gate",CameraRole.ENTRY),("EXIT-01","Main Exit Gate",CameraRole.EXIT),("ZONE-A","Parking Zone A",CameraRole.PARKING_ZONE)]:
+        cam=db.query(Camera).filter_by(camera_name=name).first()
+        if not cam: db.add(Camera(camera_name=name,location=loc,camera_role=role,camera_type="DEMO",status="ONLINE"))
+        elif cam.camera_role is None: cam.camera_role=role
     db.commit()

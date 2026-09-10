@@ -35,6 +35,7 @@ class EntryIn(BaseModel):
     raw_ocr_text: str|None = None
     entry_image_url: str|None = None
     plate_image_url: str|None = None
+    camera_id: int|None = None
 
 class EntryOut(BaseModel):
     record_id: int
@@ -50,6 +51,7 @@ class ExitIn(BaseModel):
     discount: float = Field(default=0,ge=0)
     exit_image_url: str|None = None
     transaction_reference: str|None = None
+    camera_id: int|None = None
 
 class ExitOut(BaseModel):
     record_id: int
@@ -65,6 +67,7 @@ class ExitOut(BaseModel):
     payment_method: str
 
 class ALPRResponse(BaseModel):
+    input_image_url: str|None = None
     license_plate: str
     normalized_plate: str
     raw_text: str
@@ -72,3 +75,13 @@ class ALPRResponse(BaseModel):
     status: str
     verification_required: bool
     detector: str
+    plate_box: list[int] | None = None
+    region_name: str = ""
+    class_bn: str = ""
+    class_code: str = ""
+    series_number: str = ""
+    vehicle_number: str = ""
+    vehicle_category: str | None = None
+    suggested_category_id: int | None = None
+    ocr_language: str | None = None
+    ocr_engine: str | None = None

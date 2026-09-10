@@ -11,11 +11,13 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
-    CORS_ORIGINS: list[str] = []
+    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
     OCR_ENABLED: bool = True
     PLATE_MODEL_PATH: str = "../ai-models/plate_yolo.pt"
     VEHICLE_MODEL_PATH: str = "../ai-models/vehicle_yolo.pt"
     ALPR_CONFIDENCE_THRESHOLD: float = 0.80
+    TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    BENGALI_OCR_ENABLED: bool = True
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
