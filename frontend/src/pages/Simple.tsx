@@ -25,7 +25,7 @@ export default function Simple({
       <div className="mb-7">
         <div className="text-xs font-bold uppercase tracking-[.2em] text-indigo-300">
           System Module
-        </div> 
+        </div>
 
         <h1 className="text-3xl font-black text-white">
           {title}
