@@ -19,7 +19,7 @@ export default function Slots() {
         
         <div className="text-xs font-bold uppercase tracking-[.2em] text-emerald-300">
           Parking Infrastructure
-        </div>
+        </div> 
 
         <h1 className="text-3xl font-black text-white">
           Parking Slots
