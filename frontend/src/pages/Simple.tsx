@@ -7,7 +7,7 @@ export default function Simple({
   endpoint,
 }: {
   title: string;
-  endpoint?: string;
+  endpoint?: string; 
 }) {
   const [data, setData] = useState<any>(null);
 
