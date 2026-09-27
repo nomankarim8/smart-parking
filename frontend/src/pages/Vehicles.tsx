@@ -120,7 +120,7 @@ export default function Vehicles() {
                     className="px-5 py-16 text-center text-slate-600"
                   >
                     No vehicles found
-                  </td>
+                  </td> 
                 </tr>
               )}
             </tbody>
