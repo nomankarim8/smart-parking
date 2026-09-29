@@ -6,7 +6,7 @@ import SlotGrid from '../components/SlotGrid';
 export default function Slots() {
   const [slots, setSlots] = useState<Slot[]>([]);
 
-  useEffect(() => {
+  useEffect(() => { 
     api
       .get('/slots/')
       .then((r) => setSlots(r.data));
