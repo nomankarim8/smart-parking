@@ -8,7 +8,7 @@ export default function Simple({
 }: {
   title: string; 
   endpoint?: string;  
-}) {
+}) { 
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
