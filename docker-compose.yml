@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:8.0
-    restart: unless-stopped
+    restart: unless-stopped 
     environment:
       MYSQL_DATABASE: smart_parking_db
       MYSQL_ROOT_PASSWORD: root

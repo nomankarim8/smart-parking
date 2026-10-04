@@ -123,7 +123,7 @@ export default function Vehicles() {
                   </td> 
                 </tr>
               )}
-            </tbody>
+            </tbody> 
           </table>
         </div>
       </div>
