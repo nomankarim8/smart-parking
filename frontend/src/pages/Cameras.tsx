@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Camera, CircleDot, Edit3, MapPin, Plus, Save, Trash2, Video, X } from 'lucide-react';
 import api from '../services/api';
- 
+
 type CameraRole = 'ENTRY' | 'EXIT' | 'PARKING_ZONE';
 type CameraType = 'USB' | 'IP' | 'RTSP' | 'UPLOAD' | 'DEMO';
 type CameraStatus = 'ONLINE' | 'OFFLINE' | 'UNKNOWN';
