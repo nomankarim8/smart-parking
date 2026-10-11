@@ -54,7 +54,7 @@ class ALPRService:
         try:
             result = self.detector.predict(source=image, conf=0.35, verbose=False)[0]
             if len(result.boxes) == 0:
-                return image, None
+                return image, None 
             confs = result.boxes.conf.cpu().numpy()
             idx = int(np.argmax(confs))
             x1, y1, x2, y2 = result.boxes.xyxy[idx].cpu().numpy().astype(int)
@@ -92,7 +92,7 @@ class ALPRService:
             except Exception:
                 continue
         return candidates
-
+ 
     def _tesseract_candidates(self, image: np.ndarray):
         if not self._tesseract_available:
             return []
