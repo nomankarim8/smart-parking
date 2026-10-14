@@ -55,7 +55,7 @@ class ALPRService:
             result = self.detector.predict(source=image, conf=0.35, verbose=False)[0]
             if len(result.boxes) == 0:
                 return image, None 
-            
+             
             confs = result.boxes.conf.cpu().numpy()
             idx = int(np.argmax(confs))
             x1, y1, x2, y2 = result.boxes.xyxy[idx].cpu().numpy().astype(int)
