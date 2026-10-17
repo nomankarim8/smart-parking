@@ -37,7 +37,7 @@ class ALPRService:
 
     def _decode(self, data: bytes) -> np.ndarray:
         return np.array(Image.open(BytesIO(data)).convert("RGB"))
-
+ 
     def _ensure_easyocr(self):
         if self._ocr_attempted or not settings.OCR_ENABLED:
             return

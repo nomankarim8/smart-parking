@@ -7,3 +7,4 @@ Place local MP4 files here for offline demonstration:
 - `parking-zone.mp4` for `ZONE-A`
 
 Set each camera `camera_type` to `DEMO` and `stream_url` to the corresponding file path.
+ 

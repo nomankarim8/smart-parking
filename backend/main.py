@@ -16,7 +16,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.on_event("startup")
 def startup():
     init_db()
- 
+  
 @app.get("/")
 def root():
     return {"system": settings.PROJECT_NAME, "status": "online", "docs": "/docs", "version": "1.0.0"}
