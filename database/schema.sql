@@ -95,6 +95,21 @@ CREATE TABLE IF NOT EXISTS parking_records (
   INDEX idx_record_status_entry(status, entry_time), INDEX idx_record_vehicle(vehicle_id), INDEX idx_record_slot(slot_id), INDEX idx_record_exit(exit_time)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS reservations (
+  reservation_id INT AUTO_INCREMENT PRIMARY KEY,
+  vehicle_id INT NOT NULL,
+  slot_id INT NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  status ENUM('BOOKED','CHECKED_IN','EXPIRED','CANCELLED') NOT NULL DEFAULT 'BOOKED',
+  created_by INT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at DATETIME NOT NULL,
+  CONSTRAINT fk_reservation_vehicle FOREIGN KEY(vehicle_id) REFERENCES vehicles(vehicle_id),
+  CONSTRAINT fk_reservation_slot FOREIGN KEY(slot_id) REFERENCES parking_slots(slot_id),
+  CONSTRAINT fk_reservation_user FOREIGN KEY(created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+  INDEX idx_reservation_status_expiry(status, expires_at)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS plate_detections (
   detection_id INT AUTO_INCREMENT PRIMARY KEY,
   camera_id INT NULL, parking_record_id INT NULL,
