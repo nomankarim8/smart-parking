@@ -19,7 +19,8 @@ from app.models.all_models import (
 from app.schemas.models import ReservationCheckIn, ReservationIn
 from app.services.plate import normalize
 from app.services.reservations import expire_reservations
-from app.services.activity import create_notification,record_activity
+from app.services.activity import create_notification, record_activity
+from app.services.sms import SmsDeliveryError, send_reservation_confirmation
 
 router = APIRouter()
 RESERVATION_HOLD_MINUTES = 30
@@ -71,6 +72,10 @@ def create_reservation(
         raise HTTPException(404, "Vehicle category not found")
 
     plate = normalize(payload.plate_number)
+    try:
+        mobile_number = normalize_mobile_number(payload.mobile_number)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     vehicle = db.query(Vehicle).filter_by(normalized_plate=plate).first()
     if vehicle and vehicle.category_id != category.category_id:
         raise HTTPException(409, "Vehicle is registered under a different category")
@@ -103,6 +108,7 @@ def create_reservation(
         )
         db.add(vehicle)
         db.flush()
+    vehicle.owner_phone = mobile_number
 
     token = secrets.token_urlsafe(32)
     reservation = Reservation(
@@ -116,11 +122,29 @@ def create_reservation(
     slot.status = SlotStatus.RESERVED
     db.add(reservation)
     db.flush()
-    create_notification(db,"Reservation confirmed",f"{vehicle.plate_number} reserved slot {slot.slot_number} until {reservation.expires_at.isoformat()}Z.","INFO",user.user_id)
-    record_activity(db,user.user_id,"RESERVATION_CREATED","RESERVATION",reservation.reservation_id,{"plate_number":vehicle.plate_number,"slot":slot.slot_number})
+    create_notification(db, "Reservation confirmed", f"{vehicle.plate_number} reserved slot {slot.slot_number} until {reservation.expires_at.isoformat()}Z.", "INFO", user.user_id)
+    record_activity(db, user.user_id, "RESERVATION_CREATED", "RESERVATION", reservation.reservation_id, {"plate_number": vehicle.plate_number, "slot": slot.slot_number})
     db.commit()
     db.refresh(reservation)
-    return {**reservation_data(reservation), "check_in_token": token}
+    sms_delivery = {"status": "disabled", "message": "SMS is disabled. Configure Twilio to send confirmation messages."}
+    try:
+        sms_delivery = send_reservation_confirmation(
+            mobile_number,
+            plate,
+            slot.slot_number,
+            reservation.expires_at,
+        )
+    except SmsDeliveryError as exc:
+        create_notification(
+            db,
+            "Reservation SMS failed",
+            f"Reservation #{reservation.reservation_id} was created, but its SMS confirmation could not be sent: {exc}",
+            "WARNING",
+            user.user_id,
+        )
+        db.commit()
+        sms_delivery = {"status": "failed", "message": str(exc)}
+    return {**reservation_data(reservation), "check_in_token": token, "sms_delivery": sms_delivery}
 
 
 @router.post("/check-in")

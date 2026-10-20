@@ -23,6 +23,7 @@ export default function Reservations() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [plate, setPlate] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [issuedPass, setIssuedPass] = useState<Reservation | null>(null);
   const [message, setMessage] = useState('');
@@ -57,10 +58,13 @@ export default function Reservations() {
       const response = await api.post('/reservations/', {
         plate_number: plate.trim(),
         category_id: Number(categoryId),
+        mobile_number: mobileNumber.trim(),
       });
       setIssuedPass(response.data);
       setPlate('');
-      setMessage(`Slot ${response.data.slot} reserved for ${response.data.plate_number}.`);
+      setMobileNumber('');
+      const smsStatus=response.data.sms_delivery?.status;
+      setMessage(`Slot ${response.data.slot} reserved for ${response.data.plate_number}.${smsStatus==='queued'?' Confirmation SMS queued.':smsStatus==='failed'?' Reservation succeeded, but confirmation SMS failed. Check Notifications.':' SMS is disabled; enable Twilio in backend/.env to send confirmations.'}`);
       await loadData();
     } catch (error: unknown) {
       setMessage(errorMessage(error));
@@ -115,6 +119,11 @@ export default function Reservations() {
                 {categories.map((category) => <option key={category.category_id} value={category.category_id}>{category.category_name}</option>)}
               </select>
             </label>
+            <label className="block">
+              <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">Mobile number for confirmation</span>
+              <input required type="tel" autoComplete="tel" minLength={7} maxLength={24} value={mobileNumber} onChange={(event) => setMobileNumber(event.target.value)} placeholder="01XXXXXXXXX or +8801XXXXXXXXX" className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3.5 font-semibold text-white outline-none focus:border-indigo-500" />
+              <span className="mt-1 block text-xs text-slate-500">We'll send the reservation slot and QR pass expiry by SMS.</span>
+            </label>
             <button disabled={busy || !categories.length} className="w-full rounded-xl bg-indigo-500 py-3.5 font-bold text-white hover:bg-indigo-400 disabled:opacity-50">
               {busy ? 'RESERVING…' : 'RESERVE SLOT & ISSUE QR PASS'}
             </button>
@@ -128,6 +137,7 @@ export default function Reservations() {
               <QRCodeSVG value={issuedPass.check_in_token} size={200} level="M" />
             </div>
             <p className="mt-3 text-center text-xs text-slate-400">Present this QR at Vehicle Entry before {new Date(issuedPass.expires_at).toLocaleTimeString()}.</p>
+            {issuedPass.sms_delivery&&<p className={`mt-2 text-center text-xs ${issuedPass.sms_delivery.status==='queued'?'text-emerald-300':issuedPass.sms_delivery.status==='failed'?'text-rose-300':'text-amber-300'}`}>{issuedPass.sms_delivery.message}</p>}
             <div className="mt-3 flex gap-2">
               <button type="button" onClick={copyToken} className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"><Copy size={14} /> Copy pass token</button>
               <a href="/entry" className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300"><Check size={14} /> Gate check-in</a>

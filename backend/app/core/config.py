@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     NAGAD_HOST_IP: str = ""
     NAGAD_PUBLIC_KEY: str = ""
     NAGAD_PRIVATE_KEY: str = ""
+    TWILIO_SMS_ENABLED: bool = False
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_FROM_NUMBER: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
