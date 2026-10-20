@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Camera, CircleDot, Edit3, MapPin, Plus, Save, Trash2, Video, X } from 'lucide-react';
+import { Camera, CircleDot, Edit3, MapPin, Plus, Save, Trash2, UploadCloud, Video, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
  
 type CameraRole = 'ENTRY' | 'EXIT' | 'PARKING_ZONE';
@@ -47,11 +48,15 @@ export default function Cameras() {
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [videoCameraId, setVideoCameraId] = useState('');
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
 
   const fetchCameras = async () => {
     try {
       const res = await api.get<CameraItem[]>('/cameras/');
       setCameras(res.data);
+      setVideoCameraId((current) => current || String(res.data[0]?.camera_id ?? ''));
     } catch (error) {
       setMessage('Unable to load camera configuration.');
     } finally {
@@ -128,6 +133,27 @@ export default function Cameras() {
     }
   };
 
+  const uploadDemoVideo = async () => {
+    if (!videoCameraId || !videoFile) {
+      setMessage('Choose a camera and a video file first.');
+      return;
+    }
+    setUploadingVideo(true);
+    setMessage('');
+    try {
+      const body = new FormData();
+      body.append('file', videoFile);
+      const response = await api.post<CameraItem>(`/cameras/${videoCameraId}/upload-video`, body);
+      setCameras(current => current.map(camera => camera.camera_id === response.data.camera_id ? response.data : camera));
+      setVideoFile(null);
+      setMessage(`${response.data.camera_name} demo video is ready. Open CCTV Monitor to review live playback and run ALPR.`);
+    } catch (error: unknown) {
+      setMessage(errorMessage(error));
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -136,9 +162,12 @@ export default function Cameras() {
           <h1 className="mt-2 text-3xl font-black text-white sm:text-4xl">Camera Management</h1>
           <p className="mt-2 max-w-3xl text-slate-400">Configure dedicated Entry, Exit and Parking Zone cameras for the ALPR workflow.</p>
         </div>
-        <button onClick={resetForm} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white hover:bg-white/10">
-          <Plus size={18}/> Add Camera
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/monitor" className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-200 hover:bg-emerald-400/15"><Video size={18}/> CCTV Monitor</Link>
+          <button onClick={resetForm} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-white hover:bg-white/10">
+            <Plus size={18}/> Add Camera
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -155,6 +184,18 @@ export default function Cameras() {
           </div>
         ))}
       </div>
+
+      <section className="glass mt-6 rounded-2xl p-5 sm:p-6">
+        <div className="mb-4 flex items-start gap-3">
+          <div className="rounded-xl bg-indigo-500/10 p-2 text-indigo-300"><UploadCloud size={20}/></div>
+          <div><h2 className="font-bold text-white">Video input · camera demo mode</h2><p className="mt-1 text-sm text-slate-500">Upload an MP4/AVI/MOV/MKV/WebM clip (max 100 MB) to simulate a camera feed and test plate recognition.</p></div>
+        </div>
+        {cameras.length===0?<p className="text-sm text-amber-300">Add a camera before uploading a demo clip.</p>:<div className="grid gap-3 md:grid-cols-[1fr_1.4fr_auto] md:items-end">
+          <label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Camera</span><select value={videoCameraId} onChange={event=>setVideoCameraId(event.target.value)} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white">{cameras.map(camera=><option key={camera.camera_id} value={camera.camera_id}>{camera.camera_name} · {camera.camera_role}</option>)}</select></label>
+          <label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Video clip</span><input type="file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,video/webm,.mp4,.mov,.avi,.mkv,.webm" onChange={event=>setVideoFile(event.target.files?.[0]||null)} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2.5 text-sm text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-500/15 file:px-3 file:py-2 file:text-xs file:font-bold file:text-indigo-200"/></label>
+          <button type="button" disabled={uploadingVideo||!videoFile} onClick={()=>void uploadDemoVideo()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"><UploadCloud size={17}/>{uploadingVideo?'UPLOADING…':'UPLOAD VIDEO'}</button>
+        </div>}
+      </section>
 
       <div className="mt-8 grid gap-6 xl:grid-cols-[1.15fr_1fr]">
         <div className="glass rounded-2xl p-6">
