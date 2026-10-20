@@ -7,6 +7,7 @@ from app.services.plate import normalize, parse_plate
 from app.services.billing import calculate
 from app.schemas.models import EntryIn,EntryOut,ExitIn,ExitOut
 from app.api.deps import current_user,require_roles
+from app.services.activity import create_notification,record_activity
 router=APIRouter()
 @router.post("/entry",response_model=EntryOut)
 def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):
@@ -50,6 +51,9 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
         ))
     if black:
         db.add(Notification(title="Blacklisted Vehicle Detected",message=f"Plate {plate} detected at vehicle entry. Manual staff review required.",severity="WARNING",created_by=user.user_id))
+    else:
+        create_notification(db,"Parking session started",f"{plate} entered and was assigned slot {slot.slot_number}.","INFO",user.user_id)
+    record_activity(db,user.user_id,"PARKING_SESSION_STARTED","PARKING_RECORD",record.record_id,{"plate_number":plate,"slot":slot.slot_number,"blacklist_alert":bool(black)})
     db.commit(); db.refresh(record)
     return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"status":record.status.value,"blacklist_alert":bool(black)}
 @router.post("/exit",response_model=ExitOut)
@@ -67,8 +71,12 @@ def exit_vehicle(payload:ExitIn,db:Session=Depends(get_db),user=Depends(require_
     if payload.camera_id:
         db.add(PlateDetection(camera_id=payload.camera_id,parking_record_id=record.record_id,normalized_plate=plate,confidence=0,image_url=payload.exit_image_url,verification_status="MANUAL_REQUIRED"))
     slot=db.get(ParkingSlot,record.slot_id); slot.status=SlotStatus.AVAILABLE; slot.current_vehicle_id=None
-    pm=Payment(record_id=record.record_id,total_duration_minutes=details["minutes"],gross_amount=details["amount"],discount_amount=discount,net_amount=net,payment_method=PaymentMethod(payload.payment_method),payment_status=PaymentStatus.PAID,payment_time=exit_time,transaction_reference=payload.transaction_reference,created_by=user.user_id); db.add(pm); db.commit()
-    return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"exit_time":exit_time,"duration_minutes":details["minutes"],"gross_amount":details["amount"],"discount_amount":discount,"net_amount":net,"payment_status":"PAID","payment_method":payload.payment_method}
+    pm=Payment(record_id=record.record_id,total_duration_minutes=details["minutes"],gross_amount=details["amount"],discount_amount=discount,net_amount=net,payment_method=PaymentMethod(payload.payment_method),payment_status=PaymentStatus.PENDING,payment_time=None,transaction_reference=None,created_by=user.user_id); db.add(pm)
+    create_notification(db,"Parking session ended",f"{vehicle.plate_number} exited from slot {slot.slot_number}. A payment of ৳{net:.2f} is due.","INFO",user.user_id)
+    create_notification(db,"Payment due",f"৳{net:.2f} is due for parking record #{record.record_id} ({vehicle.plate_number}).","WARNING",user.user_id)
+    record_activity(db,user.user_id,"PARKING_SESSION_ENDED","PARKING_RECORD",record.record_id,{"plate_number":vehicle.plate_number,"slot":slot.slot_number,"payment_due":net})
+    db.commit()
+    return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"exit_time":exit_time,"duration_minutes":details["minutes"],"gross_amount":details["amount"],"discount_amount":discount,"net_amount":net,"payment_status":"PENDING","payment_method":payload.payment_method}
 @router.get("/active")
 def active(db:Session=Depends(get_db),_=Depends(current_user)):
     records=db.query(ParkingRecord).filter_by(status=ParkingStatus.PARKED).order_by(ParkingRecord.entry_time.desc()).all(); return [{"record_id":r.record_id,"plate":r.vehicle.plate_number,"slot":r.slot.slot_number,"category":r.vehicle.category.category_name,"entry_time":r.entry_time.isoformat()} for r in records]

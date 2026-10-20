@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.all_models import Camera, CameraRole, CameraStatus, CameraType, User
+from app.services.activity import record_activity
 
 router = APIRouter()
 
@@ -71,6 +72,8 @@ def create_camera(
         status=status_enum,
     )
     db.add(camera)
+    db.flush()
+    record_activity(db, _.user_id, "CAMERA_CREATED", "CAMERA", camera.camera_id, {"camera_name":camera.camera_name,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value})
     db.commit()
     db.refresh(camera)
     return serialize(camera)
@@ -87,6 +90,7 @@ def update_camera(
     if not camera:
         raise HTTPException(404, "Camera not found")
 
+    before={"camera_name":camera.camera_name,"location":camera.location,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value,"status":camera.status.value,"stream_url":camera.stream_url}
     if "camera_name" in payload:
         name = str(payload["camera_name"]).strip()
         if not name:
@@ -131,6 +135,7 @@ def update_camera(
     if "stream_url" in payload:
         camera.stream_url = payload["stream_url"] or None
 
+    record_activity(db, _.user_id, "CAMERA_UPDATED", "CAMERA", camera.camera_id, {"before":before,"after":{"camera_name":camera.camera_name,"location":camera.location,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value,"status":camera.status.value,"stream_url":camera.stream_url}})
     db.commit()
     db.refresh(camera)
     return serialize(camera)
@@ -145,7 +150,9 @@ def delete_camera(
     camera = db.get(Camera, camera_id)
     if not camera:
         raise HTTPException(404, "Camera not found")
+    details={"camera_name":camera.camera_name,"camera_role":camera.camera_role.value,"location":camera.location}; camera_id=camera.camera_id
     db.delete(camera)
+    record_activity(db, _.user_id, "CAMERA_DELETED", "CAMERA", camera_id, details)
     db.commit()
     return {"message": "Camera deleted successfully"}
 

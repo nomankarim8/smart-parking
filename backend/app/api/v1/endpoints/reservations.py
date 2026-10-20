@@ -19,6 +19,7 @@ from app.models.all_models import (
 from app.schemas.models import ReservationCheckIn, ReservationIn
 from app.services.plate import normalize
 from app.services.reservations import expire_reservations
+from app.services.activity import create_notification,record_activity
 
 router = APIRouter()
 RESERVATION_HOLD_MINUTES = 30
@@ -114,6 +115,9 @@ def create_reservation(
     )
     slot.status = SlotStatus.RESERVED
     db.add(reservation)
+    db.flush()
+    create_notification(db,"Reservation confirmed",f"{vehicle.plate_number} reserved slot {slot.slot_number} until {reservation.expires_at.isoformat()}Z.","INFO",user.user_id)
+    record_activity(db,user.user_id,"RESERVATION_CREATED","RESERVATION",reservation.reservation_id,{"plate_number":vehicle.plate_number,"slot":slot.slot_number})
     db.commit()
     db.refresh(reservation)
     return {**reservation_data(reservation), "check_in_token": token}
@@ -165,6 +169,8 @@ def check_in_reservation(
     slot.current_vehicle_id = vehicle.vehicle_id
     reservation.status = "CHECKED_IN"
     db.add(record)
+    create_notification(db,"Reserved vehicle checked in",f"{vehicle.plate_number} checked in to slot {slot.slot_number}.","INFO",user.user_id)
+    record_activity(db,user.user_id,"RESERVATION_CHECKED_IN","RESERVATION",reservation.reservation_id,{"plate_number":vehicle.plate_number,"slot":slot.slot_number})
     db.commit()
     db.refresh(record)
     return {
@@ -199,5 +205,6 @@ def cancel_reservation(
     slot = db.get(ParkingSlot, reservation.slot_id)
     if slot and slot.status == SlotStatus.RESERVED:
         slot.status = SlotStatus.AVAILABLE
+    record_activity(db,_.user_id,"RESERVATION_CANCELLED","RESERVATION",reservation_id,{"slot":slot.slot_number if slot else None})
     db.commit()
     return {"reservation_id": reservation_id, "status": reservation.status}

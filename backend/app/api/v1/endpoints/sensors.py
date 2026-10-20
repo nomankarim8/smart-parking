@@ -13,7 +13,7 @@ from app.models.all_models import (
     SensorEvent,
     SlotStatus,
 )
-from app.services.activity import record_activity
+from app.services.activity import create_notification,record_activity
 
 router = APIRouter()
 
@@ -78,6 +78,7 @@ def simulate_sensor(
         slot.slot_id,
         {"slot_number": slot.slot_number, "from": previous_status.value, "to": new_status.value},
     )
+    create_notification(db,"Simulated slot sensor update",f"Sensor simulation marked slot {slot.slot_number} {new_status.value.lower()}.","INFO",user.user_id)
     db.commit()
     return {
         "slot_id": slot.slot_id,

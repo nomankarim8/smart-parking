@@ -78,7 +78,7 @@ class Notification(Base):
     notification_id:Mapped[int]=mapped_column(primary_key=True); title:Mapped[str]=mapped_column(String(150)); message:Mapped[str]=mapped_column(String(500)); severity:Mapped[str]=mapped_column(String(20),default="INFO"); is_read:Mapped[bool]=mapped_column(Boolean,default=False); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); created_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL"))
 class ActivityLog(Base):
     __tablename__="activity_logs"
-    log_id:Mapped[int]=mapped_column(primary_key=True); user_id:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); action:Mapped[str]=mapped_column(String(120)); entity_type:Mapped[str|None]=mapped_column(String(80)); entity_id:Mapped[int|None]=mapped_column(Integer); details:Mapped[dict|None]=mapped_column(JSON); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+    log_id:Mapped[int]=mapped_column(primary_key=True); user_id:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); action:Mapped[str]=mapped_column(String(120)); entity_type:Mapped[str|None]=mapped_column(String(80)); entity_id:Mapped[int|None]=mapped_column(Integer); details:Mapped[dict|None]=mapped_column(JSON); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); user=relationship("User")
 class SensorEvent(Base):
     __tablename__="sensor_events"
     event_id:Mapped[int]=mapped_column(primary_key=True)

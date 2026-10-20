@@ -158,3 +158,16 @@ CREATE TABLE IF NOT EXISTS activity_logs (
   log_id INT AUTO_INCREMENT PRIMARY KEY, user_id INT NULL, action VARCHAR(120) NOT NULL, entity_type VARCHAR(80), entity_id INT NULL, details JSON NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_log_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE SET NULL, INDEX idx_log_time(created_at), INDEX idx_log_action(action)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS sensor_events (
+  event_id INT AUTO_INCREMENT PRIMARY KEY,
+  slot_id INT NOT NULL,
+  previous_status VARCHAR(20) NOT NULL,
+  new_status VARCHAR(20) NOT NULL,
+  source VARCHAR(30) NOT NULL DEFAULT 'SIMULATED',
+  created_by INT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_sensor_event_slot FOREIGN KEY(slot_id) REFERENCES parking_slots(slot_id) ON DELETE CASCADE,
+  CONSTRAINT fk_sensor_event_user FOREIGN KEY(created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+  INDEX idx_sensor_event_created(created_at)
+) ENGINE=InnoDB;
