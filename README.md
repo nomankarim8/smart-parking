@@ -14,8 +14,12 @@ University-level full-stack CSE project using FastAPI, MySQL, React + TypeScript
 - Optional trained YOLO plate detector
 - Blacklist alerts and notifications
 - Dashboard statistics
+- Historical parking-demand forecast
 - Parking history + CSV export
 - Camera registry
+- Reservation notifications and admin audit history
+- Simulated parking-slot sensor events
+- Demo payment approval/decline flow with printable receipts
 - Docker Compose support
 - pytest-ready backend test structure
 
@@ -31,6 +35,16 @@ University-level full-stack CSE project using FastAPI, MySQL, React + TypeScript
 8. Login with `admin` / `Admin@12345`.
 
 See `docs/WINDOWS_RUNBOOK.md`, `docs/ALPR_MODEL_SETUP.md`, `docs/INSTALLATION.md` and `docs/USER_MANUAL.md`.
+
+## Operations demo features
+
+- **Demo payments:** vehicle exit creates a pending payment. Use **Demo approve payment** or **Demo decline** to test paid/unpaid states; approved transactions receive a printable receipt. This is a local simulation, not a real payment-provider integration.
+- **Demand forecast:** the dashboard estimates hourly occupancy from parking sessions recorded over the previous 56 days. Predictions become more representative as history grows.
+- **Notifications:** reservation confirmations, parking start/end, payment due, payment outcome, sensor simulation, and blacklist alerts appear in the Notifications page.
+- **Sensor simulator:** Admin, Super Admin, or Operator can simulate free/occupied events on eligible slots. These simulated states do not create fake vehicle parking records.
+- **Audit log and pricing:** Admin/Super Admin can review administrative activity and change category pricing in Settings. Fee, vehicle, camera, reservation, payment, and simulated sensor changes are recorded in the audit history.
+
+Existing databases create the new `sensor_events` table automatically at backend startup. Fresh database installations also include it in `database/schema.sql`.
 
 ## Important
 

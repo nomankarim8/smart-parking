@@ -20,10 +20,14 @@ import {
   XAxis,
 } from 'recharts';
 
+type ForecastPoint={hour:string;expected_arrivals:number;expected_occupied_slots:number;expected_occupancy_percent:number;demand:'LOW'|'MODERATE'|'HIGH';sample_weeks:number};
+
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [forecast, setForecast] = useState<ForecastPoint[]>([]);
+  const [forecastError, setForecastError] = useState('');
 
   const loadDashboard = () =>
     Promise.all([api.get('/dashboard/stats'), api.get('/slots/')]).then(
@@ -39,6 +43,15 @@ export default function Dashboard() {
 
     const intervalId = setInterval(loadDashboard, 5000);
 
+    return () => clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    const loadForecast = () => api.get('/dashboard/forecast?hours=24')
+      .then((response) => { setForecast(response.data.forecast); setForecastError(''); })
+      .catch(() => setForecastError('Forecast is unavailable. Historical data may be insufficient.'));
+    void loadForecast();
+    const intervalId = setInterval(loadForecast, 60000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -112,6 +125,12 @@ export default function Dashboard() {
                 Today's entry distribution
               </p>
             </div>
+
+            <section className="glass mt-5 rounded-2xl p-5">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-2"><div><h3 className="font-bold text-white">24-hour Parking Demand Forecast</h3><p className="text-xs text-slate-500">Historical occupancy for the same weekday and hour over the last 56 days</p></div><span className="text-xs text-slate-500">LOW · MODERATE · HIGH expected occupancy</span></div>
+              {forecastError?<p className="py-8 text-center text-sm text-amber-300">{forecastError}</p>:<div className="h-64"><ResponsiveContainer width="100%" height="100%"><AreaChart data={forecast}><XAxis dataKey="hour" tickFormatter={(value:string)=>new Date(value).toLocaleTimeString([], {hour:'numeric'})} stroke="#64748b" fontSize={10}/><Tooltip labelFormatter={(value)=>new Date(String(value)).toLocaleString()} formatter={(value,name)=>[`${value}${name==='expected_occupancy_percent'?'%':''}`,name==='expected_occupancy_percent'?'Expected occupancy':name==='expected_occupied_slots'?'Expected occupied slots':'Expected arrivals']}/><Area type="monotone" dataKey="expected_occupancy_percent" name="Expected occupancy" stroke="#38bdf8" fill="#0ea5e9" fillOpacity={0.18}/></AreaChart></ResponsiveContainer></div>}
+              {forecast.length>0&&<div className="mt-3 grid gap-2 sm:grid-cols-3"><div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><span className="text-xs text-slate-500">Peak demand</span><div className="mt-1 font-bold text-white">{forecast.reduce((peak,point)=>point.expected_occupancy_percent>peak.expected_occupancy_percent?point:peak).demand}</div></div><div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><span className="text-xs text-slate-500">Peak forecast occupancy</span><div className="mt-1 font-bold text-sky-300">{Math.max(...forecast.map(point=>point.expected_occupancy_percent))}%</div></div><div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3"><span className="text-xs text-slate-500">Historical samples</span><div className="mt-1 font-bold text-white">{Math.max(...forecast.map(point=>point.sample_weeks))} week(s)</div></div></div>}
+            </section>
 
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
