@@ -27,10 +27,10 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200">
-      <aside className="fixed left-0 top-0 bottom-0 hidden w-64 border-r border-slate-800/80 bg-slate-950/95 p-4 lg:flex lg:flex-col">
+    <div className="app-shell min-h-screen bg-slate-950 text-slate-200">
+      <aside className="app-sidebar fixed left-0 top-0 bottom-0 hidden w-64 border-r border-slate-800/80 bg-slate-950/95 p-4 lg:flex lg:flex-col">
         <div className="mb-8 flex items-center gap-3 px-2">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-500/15 text-indigo-300"><ParkingSquare /></div>
+          <div className="app-brand-mark grid h-11 w-11 place-items-center rounded-2xl bg-indigo-500/15 text-indigo-300"><ParkingSquare /></div>
           <div>
             <div className="text-sm font-black tracking-wide text-white">SMART PARKING</div>
             <div className="text-[11px] text-slate-500">AI-ALPR CONTROL CENTER</div>
@@ -59,15 +59,15 @@ export default function Layout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
-      <div className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur lg:hidden">
+      <div className="app-mobile-header sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-500/15 text-indigo-300"><ParkingSquare size={19}/></div>
+            <div className="app-brand-mark grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-500/15 text-indigo-300"><ParkingSquare size={19}/></div>
             <div className="min-w-0"><div className="truncate text-xs font-black tracking-wide text-white">SMART PARKING</div><div className="truncate text-[10px] text-slate-500">{user?.name} · {user?.role}</div></div>
           </div>
           <div className="flex shrink-0 items-center gap-2"><ThemeToggle/><button onClick={()=>{logout();navigate('/login')}} aria-label="Sign out" className="rounded-xl border border-slate-700 p-2 text-slate-300"><LogOut size={16}/></button></div>
         </div>
-        <nav aria-label="Main navigation" className="flex gap-1 overflow-x-auto px-3 pb-3">
+        <nav aria-label="Main navigation" className="app-mobile-nav flex gap-1 overflow-x-auto px-3 pb-3">
           {nav.map(([to,label,Icon])=><NavLink key={to} to={to} className={({isActive})=>`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${isActive?'bg-indigo-500/15 text-indigo-300':'text-slate-400 hover:bg-slate-900'}`}><Icon size={15}/>{label}</NavLink>)}
         </nav>
       </div>
