@@ -94,7 +94,7 @@ def seed_staff(db):
     return vehicle, slot
 
 
-def test_demo_payment_updates_status_receipt_notifications_and_audit():
+def test_demo_payment_updates_status_receipt_notifications_and_audit(monkeypatch):
     engine, session_factory, client = make_client()
     with session_factory() as db:
         vehicle, slot = seed_staff(db)
@@ -124,6 +124,13 @@ def test_demo_payment_updates_status_receipt_notifications_and_audit():
         record_id = record.record_id
 
     with client:
+        monkeypatch.setattr(payments.settings, "PAYMENT_DEMO_ENABLED", False)
+        assert client.post(
+            f"/payments/{record_id}/demo",
+            json={"outcome": "APPROVED"},
+        ).status_code == 403
+
+        monkeypatch.setattr(payments.settings, "PAYMENT_DEMO_ENABLED", True)
         approved = client.post(
             f"/payments/{record_id}/demo",
             json={"outcome": "APPROVED"},

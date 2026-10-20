@@ -12,7 +12,7 @@ router = APIRouter()
 def list_notifications(db: Session = Depends(get_db), _=Depends(current_user)):
     notifications = (
         db.query(Notification)
-        .order_by(Notification.created_at.desc())
+        .order_by(Notification.created_at.desc(), Notification.notification_id.desc())
         .limit(100)
         .all()
     )
