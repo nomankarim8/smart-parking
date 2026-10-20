@@ -20,13 +20,14 @@ const Sensors=lazy(()=>import('./pages/Sensors'));
 const Audit=lazy(()=>import('./pages/Audit'));
 const Settings=lazy(()=>import('./pages/Settings'));
 const Payments=lazy(()=>import('./pages/Payments'));
+const PaymentResult=lazy(()=>import('./pages/PaymentResult'));
 
 function Protected(){
   const {user,loading}=useAuth();
   if(loading)return <div className="grid min-h-screen place-items-center text-slate-500">Loading…</div>;
   if(!user)return <Navigate to="/login" replace/>;
   return <Layout><Suspense fallback={<div className="grid min-h-[50vh] place-items-center text-slate-500">Loading page…</div>}><Routes>
-    <Route path="/" element={<Dashboard/>}/><Route path="/entry" element={<Entry/>}/><Route path="/exit" element={<Exit/>}/><Route path="/vehicles" element={<Vehicles/>}/><Route path="/slots" element={<Slots/>}/><Route path="/reservations" element={<Reservations/>}/><Route path="/notifications" element={<Notifications/>}/><Route path="/sensors" element={<Sensors/>}/><Route path="/payments" element={<Payments/>}/><Route path="/audit" element={<Audit/>}/><Route path="/history" element={<History/>}/><Route path="/blacklist" element={<Blacklist/>}/><Route path="/cameras" element={<Cameras/>}/><Route path="/reports" element={<Simple title="Reports & Analytics"/>}/><Route path="/settings" element={<Settings/>}/>
+    <Route path="/" element={<Dashboard/>}/><Route path="/entry" element={<Entry/>}/><Route path="/exit" element={<Exit/>}/><Route path="/vehicles" element={<Vehicles/>}/><Route path="/slots" element={<Slots/>}/><Route path="/reservations" element={<Reservations/>}/><Route path="/notifications" element={<Notifications/>}/><Route path="/sensors" element={<Sensors/>}/><Route path="/payments" element={<Payments/>}/><Route path="/payment-result" element={<PaymentResult/>}/><Route path="/audit" element={<Audit/>}/><Route path="/history" element={<History/>}/><Route path="/blacklist" element={<Blacklist/>}/><Route path="/cameras" element={<Cameras/>}/><Route path="/reports" element={<Simple title="Reports & Analytics"/>}/><Route path="/settings" element={<Settings/>}/>
   </Routes></Suspense></Layout>;
 }
 
