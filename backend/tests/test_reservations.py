@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import current_user
+from app.api.v1.endpoints import reservations
 from app.api.v1.endpoints.reservations import router
 from app.core.database import Base, get_db
 from app.models.all_models import (
@@ -52,7 +53,7 @@ def test_expired_reservation_releases_its_slot():
     engine.dispose()
 
 
-def test_reservation_qr_check_in_is_one_use_and_updates_occupancy():
+def test_reservation_qr_check_in_is_one_use_and_updates_occupancy(monkeypatch):
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
         connect_args={"check_same_thread": False},
@@ -81,17 +82,32 @@ def test_reservation_qr_check_in_is_one_use_and_updates_occupancy():
         db.add(ParkingSlot(slot_number="C01", category=category, status=SlotStatus.AVAILABLE))
         db.commit()
 
+    monkeypatch.setattr(
+        reservations,
+        "send_reservation_confirmation",
+        lambda mobile_number, plate_number, slot_number, expires_at: {
+            "status": "queued",
+            "message": f"Confirmation sent to {mobile_number}",
+        },
+    )
+
     with TestClient(app) as client:
         created = client.post(
             "/reservations/",
-            json={"plate_number": "TEST 123", "category_id": 2},
+            json={
+                "plate_number": "TEST 123",
+                "category_id": 2,
+                "mobile_number": "০১৭১২৩৪৫৬৭৮",
+            },
         )
         assert created.status_code == 200
         token = created.json()["check_in_token"]
         assert created.json()["expires_at"].endswith("Z")
+        assert created.json()["sms_delivery"]["status"] == "queued"
 
         with session_factory() as db:
             assert db.query(ParkingSlot).one().status == SlotStatus.RESERVED
+            assert db.query(Vehicle).one().owner_phone == "+8801712345678"
 
         checked_in = client.post("/reservations/check-in", json={"token": token})
         assert checked_in.status_code == 200

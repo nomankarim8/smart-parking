@@ -20,7 +20,11 @@ from app.schemas.models import ReservationCheckIn, ReservationIn
 from app.services.plate import normalize
 from app.services.reservations import expire_reservations
 from app.services.activity import create_notification, record_activity
-from app.services.sms import SmsDeliveryError, send_reservation_confirmation
+from app.services.sms import (
+    SmsDeliveryError,
+    normalize_mobile_number,
+    send_reservation_confirmation,
+)
 
 router = APIRouter()
 RESERVATION_HOLD_MINUTES = 30

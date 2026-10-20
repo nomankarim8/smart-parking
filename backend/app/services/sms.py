@@ -5,6 +5,7 @@ from urllib.parse import quote
 import httpx
 
 from app.core.config import Settings, settings
+from app.services.plate import BANGLA_DIGITS
 
 
 class SmsDeliveryError(Exception):
@@ -12,7 +13,7 @@ class SmsDeliveryError(Exception):
 
 
 def normalize_mobile_number(value: str) -> str:
-    number = re.sub(r"[\s().-]", "", value)
+    number = re.sub(r"[\s().-]", "", value.translate(BANGLA_DIGITS))
     if number.startswith("01") and len(number) == 11 and number.isdigit():
         return "+880" + number[1:]
     if number.startswith("8801") and len(number) == 13 and number.isdigit():
