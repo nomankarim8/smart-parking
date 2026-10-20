@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+import pytest
 
 from app.api.deps import current_user
 from app.api.v1.endpoints import audit, dashboard, notifications, parking, payments, sensors, settings
@@ -14,6 +15,7 @@ from app.models.all_models import (
     ParkingRecord,
     ParkingSlot,
     ParkingStatus,
+    GatewayPayment,
     Payment,
     PaymentMethod,
     PaymentStatus,
@@ -94,6 +96,35 @@ def seed_staff(db):
     return vehicle, slot
 
 
+def create_pending_payment(session_factory):
+    with session_factory() as db:
+        vehicle, slot = seed_staff(db)
+        record = ParkingRecord(
+            vehicle_id=vehicle.vehicle_id,
+            slot_id=slot.slot_id,
+            entry_time=datetime.utcnow() - timedelta(hours=2),
+            exit_time=datetime.utcnow(),
+            status=ParkingStatus.COMPLETED,
+        )
+        db.add(record)
+        db.flush()
+        db.add(
+            Payment(
+                record_id=record.record_id,
+                record=record,
+                total_duration_minutes=120,
+                gross_amount=100,
+                discount_amount=0,
+                net_amount=100,
+                payment_method=PaymentMethod.CARD,
+                payment_status=PaymentStatus.PENDING,
+                created_by=1,
+            )
+        )
+        db.commit()
+        return record.record_id
+
+
 def test_demo_payment_updates_status_receipt_notifications_and_audit(monkeypatch):
     engine, session_factory, client = make_client()
     with session_factory() as db:
@@ -147,6 +178,115 @@ def test_demo_payment_updates_status_receipt_notifications_and_audit(monkeypatch
         assert client.get("/payments/due").json() == []
         assert client.get("/notifications/").json()[0]["title"] == "Demo payment received"
         assert client.get("/audit/").json()[0]["action"] == "DEMO_PAYMENT_APPROVED"
+
+    engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("provider", "checkout_url"),
+    [
+        ("BKASH", "https://checkout.bka.sh/checkout/mock"),
+        ("NAGAD", "https://sandbox.mynagad.com/checkout/mock"),
+    ],
+)
+def test_gateway_checkout_starts_for_configured_provider(
+    monkeypatch,
+    provider,
+    checkout_url,
+):
+    engine, session_factory, client = make_client()
+    record_id = create_pending_payment(session_factory)
+    monkeypatch.setattr(payments, "gateway_is_configured", lambda _provider: True)
+    monkeypatch.setattr(
+        payments,
+        "start_gateway_payment",
+        lambda attempt, amount: {
+            "provider_payment_id": f"provider-{provider.lower()}-ref",
+            "checkout_url": checkout_url,
+        },
+    )
+
+    with client:
+        response = client.post(
+            f"/payments/{record_id}/checkout",
+            json={"provider": provider},
+        )
+        assert response.status_code == 200
+        assert response.json()["checkout_url"] == checkout_url
+        assert response.json()["provider"] == provider
+        assert response.json()["status"] == "INITIATED"
+        with session_factory() as db:
+            attempt = db.query(GatewayPayment).one()
+            assert attempt.provider_payment_id == f"provider-{provider.lower()}-ref"
+            assert db.query(Payment).one().payment_status == PaymentStatus.PENDING
+
+    engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("provider", "callback_path", "currency", "amount", "attempt_status", "payment_status"),
+    [
+        (
+            "BKASH",
+            "/payments/bkash/callback?paymentID=mock-bkash-ref&status=success",
+            "BDT",
+            "100.00",
+            "PAID",
+            PaymentStatus.PAID,
+        ),
+        (
+            "NAGAD",
+            "/payments/nagad/callback?payment_ref_id=mock-nagad-ref",
+            "050",
+            "99.00",
+            "REVIEW",
+            PaymentStatus.PENDING,
+        ),
+    ],
+)
+def test_gateway_callback_uses_verified_amount_and_currency(
+    monkeypatch,
+    provider,
+    callback_path,
+    currency,
+    amount,
+    attempt_status,
+    payment_status,
+):
+    engine, session_factory, client = make_client()
+    record_id = create_pending_payment(session_factory)
+    provider_reference = f"mock-{provider.lower()}-ref"
+    with session_factory() as db:
+        payment = db.query(Payment).one()
+        db.add(
+            GatewayPayment(
+                payment_id=payment.payment_id,
+                provider=provider,
+                invoice_number=f"invoice-{provider.lower()}",
+                provider_payment_id=provider_reference,
+                status="INITIATED",
+            )
+        )
+        db.commit()
+
+    monkeypatch.setattr(
+        payments,
+        "verify_gateway_payment",
+        lambda attempt, params: {
+            "completed": True,
+            "transaction_reference": f"verified-{provider.lower()}-transaction",
+            "amount": amount,
+            "currency": currency,
+        },
+    )
+
+    with client:
+        response = client.get(callback_path, follow_redirects=False)
+        assert response.status_code == 303
+        assert f"record_id={record_id}" in response.headers["location"]
+        with session_factory() as db:
+            assert db.query(Payment).one().payment_status == payment_status
+            assert db.query(GatewayPayment).one().status == attempt_status
 
     engine.dispose()
 

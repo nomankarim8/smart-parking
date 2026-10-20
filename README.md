@@ -52,11 +52,15 @@ Existing databases create the new `sensor_events` table automatically at backend
 Copy the payment variables from `backend/.env.example` into `backend/.env`, then add credentials issued to your merchant account. Keep credentials and private keys server-side; never put them in frontend variables or commit them.
 
 - Set `PAYMENT_MODE=sandbox` and retain the sandbox API URLs while testing.
-- Set `PAYMENT_CALLBACK_BASE_URL` to the publicly reachable HTTPS URL ending in `/api/v1/payments`. A localhost callback is not reachable from the payment provider; use a trusted HTTPS development tunnel for local testing.
+- Start the backend on port `8000`, then expose it temporarily through a trusted HTTPS tunnel. For example, install Cloudflare Tunnel (`cloudflared`) and run `cloudflared tunnel --url http://localhost:8000`. Keep the tunnel terminal open while testing.
+- Copy the generated HTTPS hostname into `PAYMENT_CALLBACK_BASE_URL`, with `/api/v1/payments` appended. For example: `PAYMENT_CALLBACK_BASE_URL=https://example.trycloudflare.com/api/v1/payments`. Do not add a trailing slash. A localhost callback is not reachable from the provider; a temporary tunnel hostname can change after restart.
 - Set `PAYMENT_RETURN_URL` to the frontend payment result route.
 - bKash needs the sandbox username, password, app key and app secret.
 - Nagad needs the merchant ID/number, fixed server egress IPv4, Nagad public key and merchant private key. Preserve PEM line breaks or encode them as `\n`.
-- Start the backend and open **Payments** or **Vehicle Exit**, choose bKash or Nagad, and complete the provider-hosted checkout. The server verifies the transaction with the provider before issuing a receipt.
+- Restart the backend after changing `.env`. Sign in and request `/api/v1/payments/config`; each provider's `configured` value should be `true` before its checkout button becomes available.
+- Open **Payments** or **Vehicle Exit**, choose a provider, and complete its sandbox-hosted checkout using only the test account/data from the merchant-issued guide. The server verifies the transaction with the provider before issuing a receipt.
+- A tunnel exposes the development API to the internet. Use a temporary test database, change the default credentials and `SECRET_KEY`, share the tunnel URL only with the provider/tester, and stop the tunnel as soon as testing is complete. Never use real customer data or real-money credentials in this setup.
+- Nagad request/signature fields and callback parameters must match the current merchant-issued integration guide. Confirm them with that guide and sandbox credentials before treating Nagad checkout as verified or enabling live payments.
 - For production, use credentials and HTTPS API endpoints explicitly issued for the merchant account. Do not switch `PAYMENT_MODE` or API URLs to live without provider approval and a public HTTPS callback.
 
 ## Important

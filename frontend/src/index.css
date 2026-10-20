@@ -9,7 +9,7 @@
 
 * { box-sizing: border-box; }
 body {
-  min-width: 320px;
+  min-width: 0;
   margin: 0;
   background: radial-gradient(circle at top right, #172554 0, #020617 38%, #020617 100%);
 }
