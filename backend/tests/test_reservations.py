@@ -88,6 +88,7 @@ def test_reservation_qr_check_in_is_one_use_and_updates_occupancy():
         )
         assert created.status_code == 200
         token = created.json()["check_in_token"]
+        assert created.json()["expires_at"].endswith("Z")
 
         with session_factory() as db:
             assert db.query(ParkingSlot).one().status == SlotStatus.RESERVED

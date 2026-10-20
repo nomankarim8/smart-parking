@@ -31,8 +31,8 @@ def reservation_data(reservation: Reservation) -> dict:
         "category": reservation.vehicle.category.category_name,
         "slot": reservation.slot.slot_number,
         "status": reservation.status,
-        "created_at": reservation.created_at.isoformat(),
-        "expires_at": reservation.expires_at.isoformat(),
+        "created_at": f"{reservation.created_at.isoformat()}Z",
+        "expires_at": f"{reservation.expires_at.isoformat()}Z",
     }
 
 
