@@ -19,7 +19,7 @@ University-level full-stack CSE project using FastAPI, MySQL, React + TypeScript
 - Docker Compose support
 - pytest-ready backend test structure
 
-## Quick start on Windows
+## Quick start on Windows 
 
 1. Start MySQL/XAMPP.
 2. Run `database/schema.sql` and `database/seeds.sql`.
