@@ -69,7 +69,20 @@ class PlateDetection(Base):
     verification_status:Mapped[str]=mapped_column(String(30),default="MANUAL_REQUIRED")
 class Payment(Base):
     __tablename__="payments"
-    payment_id:Mapped[int]=mapped_column(primary_key=True); record_id:Mapped[int]=mapped_column(ForeignKey("parking_records.record_id"),unique=True); total_duration_minutes:Mapped[int]=mapped_column(Integer); gross_amount:Mapped[float]=mapped_column(Numeric(10,2)); discount_amount:Mapped[float]=mapped_column(Numeric(10,2),default=0); net_amount:Mapped[float]=mapped_column(Numeric(10,2)); payment_method:Mapped[PaymentMethod]=mapped_column(SAEnum(PaymentMethod)); payment_status:Mapped[PaymentStatus]=mapped_column(SAEnum(PaymentStatus),default=PaymentStatus.PENDING); transaction_reference:Mapped[str|None]=mapped_column(String(120)); payment_time:Mapped[datetime|None]=mapped_column(DateTime); created_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); record=relationship("ParkingRecord")
+    payment_id:Mapped[int]=mapped_column(primary_key=True); record_id:Mapped[int]=mapped_column(ForeignKey("parking_records.record_id"),unique=True); total_duration_minutes:Mapped[int]=mapped_column(Integer); gross_amount:Mapped[float]=mapped_column(Numeric(10,2)); discount_amount:Mapped[float]=mapped_column(Numeric(10,2),default=0); net_amount:Mapped[float]=mapped_column(Numeric(10,2)); payment_method:Mapped[PaymentMethod]=mapped_column(SAEnum(PaymentMethod)); payment_status:Mapped[PaymentStatus]=mapped_column(SAEnum(PaymentStatus),default=PaymentStatus.PENDING); transaction_reference:Mapped[str|None]=mapped_column(String(120)); payment_time:Mapped[datetime|None]=mapped_column(DateTime); created_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); record=relationship("ParkingRecord"); gateway_payments=relationship("GatewayPayment",back_populates="payment")
+class GatewayPayment(Base):
+    __tablename__="gateway_payments"
+    gateway_payment_id:Mapped[int]=mapped_column(primary_key=True)
+    payment_id:Mapped[int]=mapped_column(ForeignKey("payments.payment_id",ondelete="CASCADE"),index=True)
+    provider:Mapped[str]=mapped_column(String(20),index=True)
+    invoice_number:Mapped[str]=mapped_column(String(80),unique=True)
+    provider_payment_id:Mapped[str|None]=mapped_column(String(120),unique=True,index=True)
+    checkout_url:Mapped[str|None]=mapped_column(String(1000))
+    status:Mapped[str]=mapped_column(String(20),default="INITIATED",index=True)
+    provider_reference:Mapped[str|None]=mapped_column(String(120))
+    created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+    updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow)
+    payment=relationship("Payment",back_populates="gateway_payments")
 class Blacklist(Base):
     __tablename__="blacklist"
     blacklist_id:Mapped[int]=mapped_column(primary_key=True); plate_number:Mapped[str]=mapped_column(String(80),unique=True,index=True); reason:Mapped[str]=mapped_column(String(255)); is_active:Mapped[bool]=mapped_column(Boolean,default=True); added_by:Mapped[int]=mapped_column(ForeignKey("users.user_id")); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); notes:Mapped[str|None]=mapped_column(Text)

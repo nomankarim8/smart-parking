@@ -18,6 +18,21 @@ class Settings(BaseSettings):
     ALPR_CONFIDENCE_THRESHOLD: float = 0.80
     TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     BENGALI_OCR_ENABLED: bool = True
+    PAYMENT_MODE: str = "sandbox"
+    PAYMENT_CALLBACK_BASE_URL: str = ""
+    PAYMENT_RETURN_URL: str = "http://localhost:5173/payment-result"
+    PAYMENT_DEMO_ENABLED: bool = False
+    BKASH_BASE_URL: str = "https://tokenized.sandbox.bka.sh/v2/tokenized-checkout"
+    BKASH_USERNAME: str = ""
+    BKASH_PASSWORD: str = ""
+    BKASH_APP_KEY: str = ""
+    BKASH_APP_SECRET: str = ""
+    NAGAD_BASE_URL: str = "http://sandbox.mynagad.com:10080/remote-payment-gateway-1.0/api/dfs"
+    NAGAD_MERCHANT_ID: str = ""
+    NAGAD_MERCHANT_NUMBER: str = ""
+    NAGAD_HOST_IP: str = ""
+    NAGAD_PUBLIC_KEY: str = ""
+    NAGAD_PRIVATE_KEY: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

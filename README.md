@@ -38,13 +38,26 @@ See `docs/WINDOWS_RUNBOOK.md`, `docs/ALPR_MODEL_SETUP.md`, `docs/INSTALLATION.md
 
 ## Operations demo features
 
-- **Demo payments:** vehicle exit creates a pending payment. Use **Demo approve payment** or **Demo decline** to test paid/unpaid states; approved transactions receive a printable receipt. This is a local simulation, not a real payment-provider integration.
+- **bKash/Nagad checkout:** vehicle exit creates a pending payment. Configure merchant sandbox credentials, a public HTTPS callback URL and gateway keys in `backend/.env`; payment completion is only recorded after the gateway is queried and the verified amount/currency match. See the provider configuration section below.
+- **Demo payments:** only available when `PAYMENT_DEMO_ENABLED=true`; keep disabled when demonstrating provider-backed transactions.
 - **Demand forecast:** the dashboard estimates hourly occupancy from parking sessions recorded over the previous 56 days. Predictions become more representative as history grows.
 - **Notifications:** reservation confirmations, parking start/end, payment due, payment outcome, sensor simulation, and blacklist alerts appear in the Notifications page.
 - **Sensor simulator:** Admin, Super Admin, or Operator can simulate free/occupied events on eligible slots. These simulated states do not create fake vehicle parking records.
 - **Audit log and pricing:** Admin/Super Admin can review administrative activity and change category pricing in Settings. Fee, vehicle, camera, reservation, payment, and simulated sensor changes are recorded in the audit history.
 
 Existing databases create the new `sensor_events` table automatically at backend startup. Fresh database installations also include it in `database/schema.sql`.
+
+### bKash/Nagad sandbox setup
+
+Copy the payment variables from `backend/.env.example` into `backend/.env`, then add credentials issued to your merchant account. Keep credentials and private keys server-side; never put them in frontend variables or commit them.
+
+- Set `PAYMENT_MODE=sandbox` and retain the sandbox API URLs while testing.
+- Set `PAYMENT_CALLBACK_BASE_URL` to the publicly reachable HTTPS URL ending in `/api/v1/payments`. A localhost callback is not reachable from the payment provider; use a trusted HTTPS development tunnel for local testing.
+- Set `PAYMENT_RETURN_URL` to the frontend payment result route.
+- bKash needs the sandbox username, password, app key and app secret.
+- Nagad needs the merchant ID/number, fixed server egress IPv4, Nagad public key and merchant private key. Preserve PEM line breaks or encode them as `\n`.
+- Start the backend and open **Payments** or **Vehicle Exit**, choose bKash or Nagad, and complete the provider-hosted checkout. The server verifies the transaction with the provider before issuing a receipt.
+- For production, use credentials and HTTPS API endpoints explicitly issued for the merchant account. Do not switch `PAYMENT_MODE` or API URLs to live without provider approval and a public HTTPS callback.
 
 ## Important
 

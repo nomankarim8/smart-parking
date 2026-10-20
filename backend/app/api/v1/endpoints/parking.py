@@ -71,9 +71,11 @@ def exit_vehicle(payload:ExitIn,db:Session=Depends(get_db),user=Depends(require_
     if payload.camera_id:
         db.add(PlateDetection(camera_id=payload.camera_id,parking_record_id=record.record_id,normalized_plate=plate,confidence=0,image_url=payload.exit_image_url,verification_status="MANUAL_REQUIRED"))
     slot=db.get(ParkingSlot,record.slot_id); slot.status=SlotStatus.AVAILABLE; slot.current_vehicle_id=None
-    pm=Payment(record_id=record.record_id,total_duration_minutes=details["minutes"],gross_amount=details["amount"],discount_amount=discount,net_amount=net,payment_method=PaymentMethod(payload.payment_method),payment_status=PaymentStatus.PENDING,payment_time=None,transaction_reference=None,created_by=user.user_id); db.add(pm)
-    create_notification(db,"Parking session ended",f"{vehicle.plate_number} exited from slot {slot.slot_number}. A payment of ৳{net:.2f} is due.","INFO",user.user_id)
-    create_notification(db,"Payment due",f"৳{net:.2f} is due for parking record #{record.record_id} ({vehicle.plate_number}).","WARNING",user.user_id)
+    no_charge=net<=0
+    pm=Payment(record_id=record.record_id,total_duration_minutes=details["minutes"],gross_amount=details["amount"],discount_amount=discount,net_amount=net,payment_method=PaymentMethod(payload.payment_method),payment_status=PaymentStatus.PAID if no_charge else PaymentStatus.PENDING,payment_time=exit_time if no_charge else None,transaction_reference="NO_CHARGE" if no_charge else None,created_by=user.user_id); db.add(pm)
+    create_notification(db,"Parking session ended",f"{vehicle.plate_number} exited from slot {slot.slot_number}. "+("No payment was due." if no_charge else f"A payment of ৳{net:.2f} is due."),"INFO",user.user_id)
+    if not no_charge:
+        create_notification(db,"Payment due",f"৳{net:.2f} is due for parking record #{record.record_id} ({vehicle.plate_number}).","WARNING",user.user_id)
     record_activity(db,user.user_id,"PARKING_SESSION_ENDED","PARKING_RECORD",record.record_id,{"plate_number":vehicle.plate_number,"slot":slot.slot_number,"payment_due":net})
     db.commit()
     return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"exit_time":exit_time,"duration_minutes":details["minutes"],"gross_amount":details["amount"],"discount_amount":discount,"net_amount":net,"payment_status":"PENDING","payment_method":payload.payment_method}
