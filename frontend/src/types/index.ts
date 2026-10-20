@@ -1,7 +1,7 @@
 export type SlotStatus='AVAILABLE'|'OCCUPIED'|'RESERVED'|'MAINTENANCE';
 export interface Slot{slot_id:number;slot_number:string;category_id:number;category:string;status:SlotStatus;current_vehicle_id:number|null}
 export interface Stats{total_slots:number;available_slots:number;occupied_slots:number;reserved_slots:number;today_vehicles:number;currently_parked:number;today_revenue:number;occupancy:number;unread_notifications:number;payments_due:number;category_breakdown:{category:string;count:number}[]}
-export interface Reservation{reservation_id:number;plate_number:string;category:string;slot:string;status:'BOOKED'|'CHECKED_IN'|'EXPIRED'|'CANCELLED';created_at:string;expires_at:string;check_in_token?:string}
+export interface Reservation{reservation_id:number;plate_number:string;category:string;slot:string;status:'BOOKED'|'CHECKED_IN'|'EXPIRED'|'CANCELLED';created_at:string;expires_at:string;check_in_token?:string;sms_delivery?:{status:'queued'|'disabled'|'failed';message:string}}
 export interface ALPRResult{license_plate:string;normalized_plate:string;raw_text:string;confidence:number;status:string;verification_required:boolean;detector:string;input_image_url?:string|null;plate_box?:number[]|null;region_name:string;class_bn:string;class_code:string;series_number:string;vehicle_number:string;vehicle_category:string|null;suggested_category_id:number|null;ocr_language:string|null;ocr_engine:string|null}
 export interface User{ id:number;username:string;name:string;role:string;email:string }
 export interface Vehicle{vehicle_id:number;plate_number:string;normalized_plate:string;category_id:number;owner_name?:string|null;owner_phone?:string|null;vehicle_model?:string|null;vehicle_color?:string|null;created_at:string}

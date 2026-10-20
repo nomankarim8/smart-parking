@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pathlib import Path
+from uuid import uuid4
+
+import cv2
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -12,6 +16,9 @@ from app.models.all_models import Camera, CameraRole, CameraStatus, CameraType, 
 from app.services.activity import record_activity
 
 router = APIRouter()
+CAMERA_VIDEO_DIR = Path(__file__).resolve().parents[4] / "uploads" / "camera_demos"
+MAX_VIDEO_BYTES = 100 * 1024 * 1024
+ALLOWED_VIDEO_TYPES = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 
 
 def serialize(camera: Camera) -> dict:
@@ -155,6 +162,73 @@ def delete_camera(
     record_activity(db, _.user_id, "CAMERA_DELETED", "CAMERA", camera_id, details)
     db.commit()
     return {"message": "Camera deleted successfully"}
+
+
+@router.post("/{camera_id}/upload-video")
+async def upload_demo_video(
+    camera_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user=Depends(require_roles("SUPER_ADMIN", "ADMIN")),
+):
+    camera = db.get(Camera, camera_id)
+    if not camera:
+        raise HTTPException(404, "Camera not found")
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in ALLOWED_VIDEO_TYPES:
+        raise HTTPException(400, "Upload an MP4, AVI, MOV, MKV, or WebM video")
+    if file.content_type and not (
+        file.content_type.startswith("video/")
+        or file.content_type == "application/octet-stream"
+    ):
+        raise HTTPException(400, "The uploaded file must be a video")
+
+    CAMERA_VIDEO_DIR.mkdir(parents=True, exist_ok=True)
+    target = CAMERA_VIDEO_DIR / f"{uuid4().hex}{suffix}"
+    size = 0
+    saved = False
+    try:
+        with target.open("wb") as destination:
+            while chunk := await file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_VIDEO_BYTES:
+                    raise HTTPException(413, "Video exceeds the 100 MB upload limit")
+                destination.write(chunk)
+        if size == 0:
+            raise HTTPException(400, "The uploaded video is empty")
+
+        capture = cv2.VideoCapture(str(target))
+        try:
+            is_readable, _ = capture.read()
+        finally:
+            capture.release()
+        if not is_readable:
+            raise HTTPException(422, "OpenCV could not read a frame from this video")
+
+        before = {
+            "camera_type": camera.camera_type.value,
+            "status": camera.status.value,
+            "stream_url": camera.stream_url,
+        }
+        camera.camera_type = CameraType.UPLOAD
+        camera.status = CameraStatus.ONLINE
+        camera.stream_url = str(target.resolve())
+        record_activity(
+            db,
+            user.user_id,
+            "CAMERA_DEMO_VIDEO_UPLOADED",
+            "CAMERA",
+            camera.camera_id,
+            {"camera_name": camera.camera_name, "bytes": size, "before": before},
+        )
+        db.commit()
+        db.refresh(camera)
+        saved = True
+        return serialize(camera)
+    finally:
+        if not saved:
+            target.unlink(missing_ok=True)
+        await file.close()
 
 
 @router.get("/{camera_id}/stream")
