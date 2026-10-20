@@ -39,6 +39,8 @@ See `docs/WINDOWS_RUNBOOK.md`, `docs/ALPR_MODEL_SETUP.md`, `docs/INSTALLATION.md
 ## Operations demo features
 
 - **bKash/Nagad checkout:** vehicle exit creates a pending payment. Configure merchant sandbox credentials, a public HTTPS callback URL and gateway keys in `backend/.env`; payment completion is only recorded after the gateway is queried and the verified amount/currency match. See the provider configuration section below.
+- **Reservation confirmation SMS:** reservation form collects a mobile number and queues a Twilio confirmation when configured. Bangladesh local numbers (`01...`) and Bengali digits are normalized to international `+880...` format. Without Twilio credentials, the reservation still succeeds and clearly reports that SMS is disabled.
+- **CCTV monitoring + video demo:** upload an MP4/AVI/MOV/MKV/WebM clip (up to 100 MB) to a registered camera, then open **CCTV Monitor** and start ALPR scanning. The server loops the uploaded clip as a live MJPEG preview; sampled frames are OCR-processed without saving every frame. Bengali and English plates are normalized to English, and detections can be sent to Vehicle Entry for operator confirmation.
 - **Demo payments:** only available when `PAYMENT_DEMO_ENABLED=true`; keep disabled when demonstrating provider-backed transactions.
 - **Demand forecast:** the dashboard estimates hourly occupancy from parking sessions recorded over the previous 56 days. Predictions become more representative as history grows.
 - **Notifications:** reservation confirmations, parking start/end, payment due, payment outcome, sensor simulation, and blacklist alerts appear in the Notifications page.
@@ -62,6 +64,21 @@ Copy the payment variables from `backend/.env.example` into `backend/.env`, then
 - A tunnel exposes the development API to the internet. Use a temporary test database, change the default credentials and `SECRET_KEY`, share the tunnel URL only with the provider/tester, and stop the tunnel as soon as testing is complete. Never use real customer data or real-money credentials in this setup.
 - Nagad request/signature fields and callback parameters must match the current merchant-issued integration guide. Confirm them with that guide and sandbox credentials before treating Nagad checkout as verified or enabling live payments.
 - For production, use credentials and HTTPS API endpoints explicitly issued for the merchant account. Do not switch `PAYMENT_MODE` or API URLs to live without provider approval and a public HTTPS callback.
+
+### Twilio reservation SMS setup
+
+- Create/configure a Twilio account and obtain its Account SID, Auth Token, and an SMS-capable Twilio sender number.
+- Set `TWILIO_SMS_ENABLED=true`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER` in `backend/.env`, then restart the backend.
+- Enter the customer's mobile number when creating a reservation. Bangladesh `01XXXXXXXXX` and Bengali-digit numbers are normalized to `+8801XXXXXXXXX`; international E.164 numbers are also accepted.
+- The API reports `queued` when Twilio accepts the SMS request; this is not a delivery receipt. Trial accounts may only send to phone numbers verified with Twilio. If sending fails, the reservation remains valid and the operator receives a warning notification.
+- Keep Twilio credentials server-side. Do not use real customer numbers in development or commit `.env`.
+
+### CCTV and uploaded-video demo
+
+- Add a camera in **Cameras**, select it in **Video input**, and upload a supported clip (maximum 100 MB). The clip is stored under `backend/uploads/camera_demos/`; the registered camera is switched to Upload/Online.
+- Open **CCTV Monitor** to view the server-looped feed. Select **Start plate scan** to sample the live feed every four seconds and run the existing ALPR pipeline. Each detection is shown in normalized English text; **Use plate at entry** pre-fills Vehicle Entry, where an operator must verify and confirm entry.
+- For CCTV/IP/RTSP sources, configure a stream URL that is reachable by the backend host, and set the camera online. USB camera sources may use a local device index such as `0`. Only use feeds you own or are authorized to monitor.
+- Automatic accuracy depends on image quality, a compatible trained plate detector, and installed OCR engines/languages. Install Tesseract with both `eng` and `ben` language data to recognize Bengali-script plates. The system does not bypass operator confirmation for parking entry.
 
 ## Important
 
