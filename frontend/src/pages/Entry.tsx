@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import type { ALPRResult } from '../types';
 import { ScanLine, UploadCloud, Camera as CameraIcon, MapPin, ShieldCheck, AlertTriangle } from 'lucide-react';
@@ -8,7 +9,8 @@ type QrDetector = { detect:(source:HTMLVideoElement)=>Promise<{rawValue:string}[
 type QrDetectorConstructor = new (options:{formats:string[]})=>QrDetector;
 
 export default function Entry(){
-  const [plate,setPlate]=useState('');
+  const [searchParams]=useSearchParams();
+  const [plate,setPlate]=useState(()=>searchParams.get('plate')||'');
   const [cat,setCat]=useState(2);
   const [alpr,setAlpr]=useState<ALPRResult|null>(null);
   const [busy,setBusy]=useState(false);
@@ -23,6 +25,10 @@ export default function Entry(){
   useEffect(()=>{
     api.get('/cameras/').then(r=>setCamera(r.data.find((c:Cam)=>c.camera_role==='ENTRY')||null)).catch(()=>{});
   },[]);
+  useEffect(()=>{
+    const detectedPlate=searchParams.get('plate');
+    if(detectedPlate){setPlate(detectedPlate);setMsg('Camera plate recognized and normalized. Verify it before confirming vehicle entry.');}
+  },[searchParams]);
 
   const scan=async(file:File)=>{
     setBusy(true); setMsg('');
