@@ -10,6 +10,7 @@ import {
   CircleDollarSign,
   ParkingCircle,
   ShieldCheck,
+  TicketCheck,
 } from 'lucide-react';
 import {
   Area,
@@ -22,12 +23,14 @@ import {
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const loadDashboard = () =>
     Promise.all([api.get('/dashboard/stats'), api.get('/slots/')]).then(
       ([statsResponse, slotsResponse]) => {
         setStats(statsResponse.data);
         setSlots(slotsResponse.data);
+        setLastUpdated(new Date());
       },
     );
 
@@ -66,7 +69,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <StatCard
             label="Total Slots"
             value={stats?.total_slots ?? '—'}
@@ -81,6 +84,11 @@ export default function Dashboard() {
             label="Occupied"
             value={stats?.occupied_slots ?? '—'}
             icon={<CarFront />}
+          />
+          <StatCard
+            label="Reserved"
+            value={stats?.reserved_slots ?? '—'}
+            icon={<TicketCheck />}
           />
           <StatCard
             label="Currently Parked"
@@ -135,6 +143,11 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        <p className="mt-3 text-right text-xs text-slate-600">
+          Live occupancy refreshes every 5 seconds
+          {lastUpdated ? ` · Updated ${lastUpdated.toLocaleTimeString()}` : ''}
+        </p>
 
         <CameraSidebar />
       </div>

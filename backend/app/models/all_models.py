@@ -37,6 +37,18 @@ class Camera(Base):
 class ParkingRecord(Base):
     __tablename__="parking_records"
     record_id:Mapped[int]=mapped_column(primary_key=True); vehicle_id:Mapped[int]=mapped_column(ForeignKey("vehicles.vehicle_id")); slot_id:Mapped[int]=mapped_column(ForeignKey("parking_slots.slot_id")); entry_time:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); exit_time:Mapped[datetime|None]=mapped_column(DateTime); entry_image_url:Mapped[str|None]=mapped_column(String(500)); exit_image_url:Mapped[str|None]=mapped_column(String(500)); plate_image_url:Mapped[str|None]=mapped_column(String(500)); raw_ocr_text:Mapped[str|None]=mapped_column(String(255)); ocr_confidence:Mapped[float|None]=mapped_column(Numeric(5,4)); status:Mapped[ParkingStatus]=mapped_column(SAEnum(ParkingStatus),default=ParkingStatus.PARKED); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow); vehicle=relationship("Vehicle"); slot=relationship("ParkingSlot")
+class Reservation(Base):
+    __tablename__="reservations"
+    reservation_id:Mapped[int]=mapped_column(primary_key=True)
+    vehicle_id:Mapped[int]=mapped_column(ForeignKey("vehicles.vehicle_id"))
+    slot_id:Mapped[int]=mapped_column(ForeignKey("parking_slots.slot_id"))
+    token_hash:Mapped[str]=mapped_column(String(64),unique=True,index=True)
+    status:Mapped[str]=mapped_column(String(20),default="BOOKED",index=True)
+    created_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL"))
+    created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+    expires_at:Mapped[datetime]=mapped_column(DateTime,index=True)
+    vehicle=relationship("Vehicle")
+    slot=relationship("ParkingSlot")
 class PlateDetection(Base):
     __tablename__="plate_detections"
     detection_id:Mapped[int]=mapped_column(primary_key=True)

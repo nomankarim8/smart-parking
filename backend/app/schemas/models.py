@@ -66,6 +66,13 @@ class ExitOut(BaseModel):
     payment_status: str
     payment_method: str
 
+class ReservationIn(BaseModel):
+    plate_number: str = Field(min_length=3,max_length=80)
+    category_id: int = Field(gt=0)
+
+class ReservationCheckIn(BaseModel):
+    token: str = Field(min_length=20,max_length=100)
+
 class ALPRResponse(BaseModel):
     input_image_url: str|None = None
     license_plate: str

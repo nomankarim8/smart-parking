@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CarFront, ParkingSquare, ScanLine, History, ShieldAlert, Video, FileBarChart2, LogOut, CircleUserRound, Settings2 } from 'lucide-react';
+import { LayoutDashboard, CarFront, ParkingSquare, ScanLine, History, ShieldAlert, Video, FileBarChart2, LogOut, CircleUserRound, Settings2, TicketCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const nav = [
@@ -9,6 +9,7 @@ const nav = [
   ['/exit', 'Vehicle Exit', LogOut],
   ['/vehicles', 'Vehicles', CarFront],
   ['/slots', 'Parking Slots', ParkingSquare],
+  ['/reservations', 'Reservations', TicketCheck],
   ['/history', 'History', History],
   ['/blacklist', 'Blacklist', ShieldAlert],
   ['/cameras', 'Cameras', Video],

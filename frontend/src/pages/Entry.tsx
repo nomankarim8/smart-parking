@@ -1,9 +1,11 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import api from '../services/api';
 import type { ALPRResult } from '../types';
 import { ScanLine, UploadCloud, Camera as CameraIcon, MapPin, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 type Cam = { camera_id:number; camera_name:string; location:string; camera_role:string; camera_type:string; status:string; stream_url?:string|null };
+type QrDetector = { detect:(source:HTMLVideoElement)=>Promise<{rawValue:string}[]> };
+type QrDetectorConstructor = new (options:{formats:string[]})=>QrDetector;
 
 export default function Entry(){
   const [plate,setPlate]=useState('');
@@ -12,6 +14,11 @@ export default function Entry(){
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
   const [camera,setCamera]=useState<Cam|null>(null);
+  const [reservationToken,setReservationToken]=useState('');
+  const [scanning,setScanning]=useState(false);
+  const videoRef=useRef<HTMLVideoElement|null>(null);
+  const scannerStream=useRef<MediaStream|null>(null);
+  const frameRef=useRef<number|null>(null);
 
   useEffect(()=>{
     api.get('/cameras/').then(r=>setCamera(r.data.find((c:Cam)=>c.camera_role==='ENTRY')||null)).catch(()=>{});
@@ -57,6 +64,85 @@ export default function Entry(){
       setMsg(e?.response?.data?.detail||'Entry failed');
     }finally{setBusy(false)}
   };
+
+  const checkInWithToken=async(token:string)=>{
+    if(!token.trim())return;
+    setBusy(true);
+    try{
+      const r=await api.post('/reservations/check-in',{token:token.trim()});
+      setMsg(`Reservation checked in. Slot ${r.data.slot} assigned to ${r.data.license_plate}.`);
+      setReservationToken('');
+      setAlpr(null);
+    }catch(e:unknown){
+      const response=typeof e==='object'&&e!==null&&'response' in e?e.response:null;
+      const data=typeof response==='object'&&response!==null&&'data' in response?response.data:null;
+      const detail=typeof data==='object'&&data!==null&&'detail' in data?data.detail:null;
+      setMsg(typeof detail==='string'?detail:'Reservation check-in failed.');
+    }finally{setBusy(false)}
+  };
+
+  useEffect(()=>{
+    if(!scanning)return;
+    const Detector=(window as Window&{BarcodeDetector?:QrDetectorConstructor}).BarcodeDetector;
+    if(!Detector){
+      setMsg('QR scanning is not supported by this browser. Enter or paste the pass token instead.');
+      setScanning(false);
+      return;
+    }
+    let cancelled=false;
+    const detector=new Detector({formats:['qr_code']});
+    const stopStream=()=>{
+      scannerStream.current?.getTracks().forEach(track=>track.stop());
+      scannerStream.current=null;
+      if(videoRef.current)videoRef.current.srcObject=null;
+    };
+    const scanFrame=async()=>{
+      if(cancelled)return;
+      const video=videoRef.current;
+      if(!video||video.readyState<2){
+        frameRef.current=requestAnimationFrame(()=>void scanFrame());
+        return;
+      }
+      try{
+        const codes=await detector.detect(video);
+        if(codes.length){
+          const scannedToken=codes[0].rawValue;
+          cancelled=true;
+          stopStream();
+          setScanning(false);
+          setReservationToken(scannedToken);
+          await checkInWithToken(scannedToken);
+          return;
+        }
+      }catch{
+        cancelled=true;
+        stopStream();
+        setScanning(false);
+        setMsg('Could not read the QR code. Enter or paste the pass token instead.');
+        return;
+      }
+      frameRef.current=requestAnimationFrame(()=>void scanFrame());
+    };
+    const start=async()=>{
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+        scannerStream.current=stream;
+        if(cancelled){stopStream();return}
+        if(videoRef.current)videoRef.current.srcObject=stream;
+        await videoRef.current?.play();
+        void scanFrame();
+      }catch{
+        setScanning(false);
+        setMsg('Camera access failed. Allow camera permission or enter the pass token manually.');
+      }
+    };
+    void start();
+    return ()=>{
+      cancelled=true;
+      if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);
+      stopStream();
+    };
+  },[scanning]);
 
   return <div className="p-4 sm:p-6 lg:p-8">
     <div className="mb-7">
@@ -108,5 +194,17 @@ export default function Entry(){
         </div>
       </div>
     </form>
+    <section className="glass mt-5 rounded-2xl p-5 sm:p-6">
+      <div className="mb-4">
+        <h2 className="font-bold text-white">QR Reservation Check-in</h2>
+        <p className="mt-1 text-xs text-slate-500">Scan the one-use reservation QR pass or enter its token. The reserved slot becomes occupied after check-in.</p>
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <input value={reservationToken} onChange={e=>setReservationToken(e.target.value)} placeholder="Paste reservation pass token" className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 font-mono text-sm text-white outline-none focus:border-indigo-500"/>
+        <button type="button" disabled={busy||!reservationToken.trim()} onClick={()=>void checkInWithToken(reservationToken)} className="rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">CHECK IN PASS</button>
+        <button type="button" disabled={busy||scanning} onClick={()=>setScanning(true)} className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-200 disabled:opacity-50">{scanning?'SCANNING…':'SCAN QR WITH CAMERA'}</button>
+      </div>
+      {scanning&&<video ref={videoRef} autoPlay muted playsInline className="mt-4 max-h-72 w-full rounded-xl bg-black object-contain"/>}
+    </section>
   </div>
 }
