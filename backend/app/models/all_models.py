@@ -79,3 +79,13 @@ class Notification(Base):
 class ActivityLog(Base):
     __tablename__="activity_logs"
     log_id:Mapped[int]=mapped_column(primary_key=True); user_id:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); action:Mapped[str]=mapped_column(String(120)); entity_type:Mapped[str|None]=mapped_column(String(80)); entity_id:Mapped[int|None]=mapped_column(Integer); details:Mapped[dict|None]=mapped_column(JSON); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+class SensorEvent(Base):
+    __tablename__="sensor_events"
+    event_id:Mapped[int]=mapped_column(primary_key=True)
+    slot_id:Mapped[int]=mapped_column(ForeignKey("parking_slots.slot_id",ondelete="CASCADE"))
+    previous_status:Mapped[str]=mapped_column(String(20))
+    new_status:Mapped[str]=mapped_column(String(20))
+    source:Mapped[str]=mapped_column(String(30),default="SIMULATED")
+    created_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL"))
+    created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+    slot=relationship("ParkingSlot")
