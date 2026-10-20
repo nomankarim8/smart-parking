@@ -41,6 +41,19 @@ const roleMeta: Record<CameraRole, { label: string; icon: string; description: s
   PARKING_ZONE: { label: 'Parking Zone', icon: 'PZ', description: 'Parking-area monitoring' },
 };
 
+function errorMessage(error: unknown) {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = error.response;
+    if (typeof response === 'object' && response !== null && 'data' in response) {
+      const data = response.data;
+      if (typeof data === 'object' && data !== null && 'detail' in data && typeof data.detail === 'string') {
+        return data.detail;
+      }
+    }
+  }
+  return 'Camera operation failed. Please try again.';
+}
+
 export default function Cameras() {
   const [cameras, setCameras] = useState<CameraItem[]>([]);
   const [loading, setLoading] = useState(true);
