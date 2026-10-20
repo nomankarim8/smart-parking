@@ -25,7 +25,11 @@ def make_camera_client():
         with session_factory() as db:
             yield db
 
-    staff = SimpleNamespace(user_id=1, username="camera-admin")
+    staff = SimpleNamespace(
+        user_id=1,
+        username="camera-admin",
+        role=SimpleNamespace(role_name="ADMIN"),
+    )
     app = FastAPI()
     app.include_router(cameras.router, prefix="/cameras")
     app.include_router(alpr.router, prefix="/alpr")
