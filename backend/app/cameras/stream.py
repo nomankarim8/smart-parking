@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Generator, Union
 
 import cv2
-
+ 
 
 class CameraStream:
     """Read frames from RTSP/HTTP/USB/local video and emit MJPEG."""
