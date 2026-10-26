@@ -3,7 +3,7 @@ from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Numeric, 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 import enum
-
+ 
 class RoleName(str,enum.Enum): SUPER_ADMIN="SUPER_ADMIN"; ADMIN="ADMIN"; OPERATOR="OPERATOR"; VIEWER="VIEWER"
 class SlotStatus(str,enum.Enum): AVAILABLE="AVAILABLE"; OCCUPIED="OCCUPIED"; RESERVED="RESERVED"; MAINTENANCE="MAINTENANCE"
 class ParkingStatus(str,enum.Enum): PARKED="PARKED"; COMPLETED="COMPLETED"; CANCELLED="CANCELLED"
