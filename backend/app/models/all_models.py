@@ -12,7 +12,7 @@ class PaymentStatus(str,enum.Enum): PENDING="PENDING"; PAID="PAID"; FAILED="FAIL
 class CameraType(str,enum.Enum): USB="USB"; IP="IP"; RTSP="RTSP"; UPLOAD="UPLOAD"; DEMO="DEMO"
 class CameraRole(str,enum.Enum): ENTRY="ENTRY"; EXIT="EXIT"; PARKING_ZONE="PARKING_ZONE"
 class CameraStatus(str,enum.Enum): ONLINE="ONLINE"; OFFLINE="OFFLINE"; UNKNOWN="UNKNOWN"
- 
+
 class Role(Base):
     __tablename__="roles"
     role_id:Mapped[int]=mapped_column(primary_key=True); role_name:Mapped[str]=mapped_column(String(50),unique=True); description:Mapped[str|None]=mapped_column(String(255)); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
