@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Smart AI-Based Vehicle Parking Management System" 
-    API_V1_STR: str = "/api/v1" 
+    API_V1_STR: str = "/api/v1"
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_USER: str = "root"
