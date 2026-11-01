@@ -9,6 +9,15 @@ class PasswordChange(BaseModel):
     current_password: str = Field(min_length=1,max_length=256)
     new_password: str = Field(min_length=12,max_length=256)
 
+class BlacklistCreate(BaseModel):
+    plate_number: str = Field(min_length=3,max_length=80)
+    reason: str = Field(min_length=1,max_length=255)
+    notes: str|None = Field(default=None,max_length=2000)
+
+class BlacklistUpdate(BaseModel):
+    reason: str|None = Field(default=None,min_length=1,max_length=255)
+    notes: str|None = Field(default=None,max_length=2000)
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
