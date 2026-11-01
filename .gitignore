@@ -9,3 +9,4 @@ backend/uploads/*
 !backend/uploads/vehicles/.gitkeep
 !backend/uploads/plates/.gitkeep
 *.log
+backups/

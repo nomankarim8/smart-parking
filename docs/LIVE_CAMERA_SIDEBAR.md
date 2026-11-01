@@ -16,6 +16,6 @@ A browser should not be pointed directly at an `rtsp://` URL. Configure the RTSP
 
 ## Browser authentication
 
-The dashboard uses an already-issued JWT as a stream query token because an HTML `<img>` cannot attach an Authorization header. The actual camera credentials stay in the database/server-side configuration.
+The dashboard requests a camera-scoped stream ticket after normal API authentication because an HTML `<img>` cannot attach an Authorization header. Tickets expire after 60 seconds and only authorize the camera they were issued for; the long-lived access token is not put in the stream URL. The actual camera credentials stay in the database/server-side configuration.
 
-For production deployment, use HTTPS, short-lived stream tokens, and preferably WebRTC/HLS for large-scale multi-camera streaming.
+The stream endpoint still opens a camera source per viewer. For production deployment with multiple simultaneous viewers, use a shared camera capture service and preferably WebRTC/HLS. The current pipeline does not report vehicle detection unless a compatible trained detector is present.
