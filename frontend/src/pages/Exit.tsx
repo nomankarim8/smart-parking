@@ -39,7 +39,24 @@ export default function Exit() {
     try {
       const response = await api.post('/parking/exit', { license_plate:plate, payment_method:method, camera_id:camera?.camera_id || null });
       setResult(response.data);
-      setMsg('Exit completed. Slot released; payment is pending until demo payment is completed.');
+      setMsg(response.data.payment_status === 'PAID'
+        ? 'No payment was due. Exit is complete and the slot is available.'
+        : 'Payment is pending. The parking session and slot remain active until payment is confirmed.');
+    } catch (error: unknown) {
+      setMsg(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmCashPayment = async () => {
+    if (!result) return;
+    setBusy(true);
+    setMsg('');
+    try {
+      const response = await api.post(`/payments/${result.record_id}/cash/confirm`);
+      setResult(response.data);
+      setMsg('Cash payment confirmed. Exit is complete and the slot is now available.');
     } catch (error: unknown) {
       setMsg(errorMessage(error));
     } finally {
@@ -73,7 +90,7 @@ export default function Exit() {
   };
 
   return <div className="p-4 sm:p-6 lg:p-8">
-    <div className="mb-7"><div className="text-xs font-bold uppercase tracking-[.2em] text-rose-300">Checkout Workflow</div><h1 className="text-3xl font-black text-white">Vehicle Exit & Payment</h1><p className="mt-1 text-sm text-slate-500">Complete exit, release the slot, then simulate payment approval or decline.</p></div>
+    <div className="mb-7"><div className="text-xs font-bold uppercase tracking-[.2em] text-rose-300">Checkout Workflow</div><h1 className="text-3xl font-black text-white">Vehicle Exit & Payment</h1><p className="mt-1 text-sm text-slate-500">Confirm payment before closing the session and releasing its parking slot.</p></div>
     <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/10 bg-amber-400/5 px-4 py-3"><CameraIcon size={18} className="text-amber-300"/><div><div className="text-xs font-bold uppercase tracking-wider text-slate-500">Exit Camera</div><div className="font-bold text-white">{camera?.camera_name||'EXIT camera not configured'}</div></div>{camera&&<div className="ml-auto inline-flex items-center gap-1 text-xs text-slate-500"><MapPin size={13}/>{camera.location}</div>}</div>
     <div className="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
       <form onSubmit={submit} className="glass rounded-2xl p-6">
@@ -100,6 +117,7 @@ export default function Exit() {
           {result.transaction_reference&&<div className="mt-2 break-all text-[11px] text-slate-500">Reference: {result.transaction_reference}</div>}
           {result.payment_status!=='PAID'&&<div className="mt-4 space-y-2">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Pay with mobile financial service</p>
+            {result.payment_method==='CASH'&&<button type="button" disabled={busy} onClick={()=>void confirmCashPayment()} className="w-full rounded-lg bg-emerald-600 px-3 py-3 text-sm font-black text-white hover:bg-emerald-500 disabled:opacity-50">{busy?'CONFIRMING…':'CONFIRM CASH RECEIVED & RELEASE SLOT'}</button>}
             <div className="grid gap-2 sm:grid-cols-2">{(['BKASH','NAGAD'] as const).map(provider=><button key={provider} disabled={busy||!paymentConfig?.providers[provider].configured} onClick={()=>void startGatewayCheckout(provider)} className={`rounded-lg px-3 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40 ${provider==='BKASH'?'bg-pink-600 hover:bg-pink-500':'bg-orange-600 hover:bg-orange-500'}`}>{paymentConfig?.providers[provider].label||provider}{!paymentConfig?.providers[provider].configured?' · NOT CONFIGURED':''}</button>)}</div>
             {paymentConfig?.demo_enabled&&<div className="grid gap-2 border-t border-slate-800 pt-3 sm:grid-cols-2"><button disabled={busy} onClick={()=>void processDemoPayment('APPROVED')} className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-50">DEMO APPROVE PAYMENT</button><button disabled={busy} onClick={()=>void processDemoPayment('DECLINED')} className="rounded-lg border border-rose-400/30 px-3 py-2 text-xs font-bold text-rose-300 disabled:opacity-50">DEMO DECLINE</button></div>}
             {paymentConfig&&<p className="text-[10px] text-slate-600">Gateway environment: {paymentConfig.mode}</p>}
