@@ -30,3 +30,8 @@ async def detect(file:UploadFile=File(...),persist:bool=Query(default=True),_=De
         raise HTTPException(422,f"ALPR processing failed: {exc}")
     result["input_image_url"]=f"/uploads/{target.name}" if target else None
     return result
+
+
+@router.get("/status")
+def alpr_status(_=Depends(current_user)):
+    return alpr_service.status()

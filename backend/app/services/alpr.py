@@ -1,4 +1,5 @@
 from io import BytesIO
+from importlib.util import find_spec
 from pathlib import Path
  
 import cv2
@@ -17,6 +18,9 @@ class ALPRService:
         self.detector = None
         self._ocr_attempted = False
         self._tesseract_available = False
+        self._tesseract_error: str | None = None
+        self._easyocr_error: str | None = None
+        self._detector_error: str | None = None
         self.detector_name = "Manual verification"
 
         model_path = Path(settings.PLATE_MODEL_PATH)
@@ -25,15 +29,61 @@ class ALPRService:
                 from ultralytics import YOLO
                 self.detector = YOLO(str(model_path))
                 self.detector_name = "YOLO"
-            except Exception:
+            except Exception as exc:
                 self.detector = None
+                self._detector_error = type(exc).__name__
 
         try:
             import pytesseract
             pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
             self._tesseract_available = bool(pytesseract.get_tesseract_version())
-        except Exception:
+        except Exception as exc:
             self._tesseract_available = False
+            self._tesseract_error = type(exc).__name__
+
+    def status(self) -> dict:
+        plate_model_exists = Path(settings.PLATE_MODEL_PATH).is_file()
+        try:
+            easyocr_installed = find_spec("easyocr") is not None
+        except (ImportError, ValueError):
+            easyocr_installed = False
+
+        if self.detector is not None:
+            detector_status = "READY"
+        elif self._detector_error:
+            detector_status = "LOAD_ERROR"
+        else:
+            detector_status = "MISSING"
+
+        easyocr_status = (
+            "READY" if self.reader is not None
+            else "LOAD_ERROR" if self._easyocr_error
+            else "AVAILABLE_NOT_INITIALIZED" if easyocr_installed and settings.OCR_ENABLED
+            else "DISABLED" if not settings.OCR_ENABLED
+            else "MISSING"
+        )
+        return {
+            "plate_detector": {
+                "status": detector_status,
+                "configured": plate_model_exists,
+                "error_type": self._detector_error,
+            },
+            "vehicle_detector": {
+                "status": "NOT_INTEGRATED",
+                "configured": Path(settings.VEHICLE_MODEL_PATH).is_file(),
+                "loaded": False,
+            },
+            "ocr": {
+                "easyocr": {"status": easyocr_status, "languages": ["en"]},
+                "tesseract": {
+                    "status": "READY" if self._tesseract_available else "MISSING",
+                    "enabled": settings.BENGALI_OCR_ENABLED,
+                    "error_type": self._tesseract_error,
+                },
+            },
+            "automatic_plate_localization": self.detector is not None,
+            "vehicle_detection": False,
+        }
 
     def _decode(self, data: bytes) -> np.ndarray:
         return np.array(Image.open(BytesIO(data)).convert("RGB"))
@@ -45,8 +95,9 @@ class ALPRService:
         try:
             import easyocr
             self.reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-        except Exception:
+        except Exception as exc:
             self.reader = None
+            self._easyocr_error = type(exc).__name__
 
     def _detect_plate(self, image: np.ndarray):
         if self.detector is None:
