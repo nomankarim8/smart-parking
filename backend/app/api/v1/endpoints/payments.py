@@ -13,9 +13,13 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.all_models import (
     GatewayPayment,
+    ParkingRecord,
+    ParkingSlot,
+    ParkingStatus,
     Payment,
     PaymentMethod,
     PaymentStatus,
+    SlotStatus,
 )
 from app.services.activity import create_notification, record_activity
 from app.services.payment_gateways import (
@@ -45,6 +49,41 @@ class DemoOutcome(str, Enum):
 
 class DemoPaymentIn(BaseModel):
     outcome: DemoOutcome = DemoOutcome.APPROVED
+
+
+def _complete_paid_parking_session(db: Session, payment: Payment) -> None:
+    record = (
+        db.query(ParkingRecord)
+        .filter_by(record_id=payment.record_id)
+        .with_for_update()
+        .first()
+    )
+    if not record:
+        raise HTTPException(409, "Parking session for this payment no longer exists.")
+    if record.status == ParkingStatus.COMPLETED:
+        return
+    if record.status != ParkingStatus.PARKED or record.exit_time is None:
+        raise HTTPException(409, "Parking session is not awaiting payment.")
+
+    slot = (
+        db.query(ParkingSlot)
+        .filter_by(slot_id=record.slot_id)
+        .with_for_update()
+        .first()
+    )
+    if (
+        not slot
+        or slot.status != SlotStatus.OCCUPIED
+        or slot.current_vehicle_id != record.vehicle_id
+    ):
+        raise HTTPException(
+            409,
+            "Parking slot state conflicts with the payment; ask an administrator to review it.",
+        )
+
+    record.status = ParkingStatus.COMPLETED
+    slot.status = SlotStatus.AVAILABLE
+    slot.current_vehicle_id = None
 
 
 def receipt_data(payment: Payment) -> dict:
@@ -148,6 +187,7 @@ def _record_provider_result(
     payment.payment_method = PaymentMethod.MOBILE_BANKING
     payment.payment_time = datetime.utcnow()
     payment.transaction_reference = attempt.provider_reference
+    _complete_paid_parking_session(db, payment)
     create_notification(
         db,
         "Payment received",
@@ -388,6 +428,7 @@ def complete_demo_payment(
         payment.payment_status = PaymentStatus.PAID
         payment.payment_time = datetime.utcnow()
         payment.transaction_reference = f"DEMO-{record_id}-{int(payment.payment_time.timestamp())}"
+        _complete_paid_parking_session(db, payment)
         create_notification(
             db,
             "Demo payment received",
@@ -412,6 +453,51 @@ def complete_demo_payment(
         db,
         user.user_id,
         action,
+        "PAYMENT",
+        payment.payment_id,
+        {"record_id": record_id, "status": payment.payment_status.value},
+    )
+    db.commit()
+    db.refresh(payment)
+    return receipt_data(payment)
+
+
+@router.post("/{record_id}/cash/confirm")
+def confirm_cash_payment(
+    record_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles("SUPER_ADMIN", "ADMIN", "OPERATOR")),
+):
+    payment = (
+        db.query(Payment)
+        .filter_by(record_id=record_id)
+        .with_for_update()
+        .first()
+    )
+    if not payment:
+        raise HTTPException(404, "Payment is not due for this parking record")
+    if payment.payment_method != PaymentMethod.CASH:
+        raise HTTPException(409, "Only cash payments can be confirmed at the exit desk.")
+    if payment.payment_status == PaymentStatus.PAID:
+        raise HTTPException(409, "Payment has already been completed")
+    if payment.payment_status not in (PaymentStatus.PENDING, PaymentStatus.FAILED):
+        raise HTTPException(409, f"Payment cannot be confirmed from {payment.payment_status.value}")
+
+    payment.payment_status = PaymentStatus.PAID
+    payment.payment_time = datetime.utcnow()
+    payment.transaction_reference = f"CASH-{payment.payment_id}-{int(payment.payment_time.timestamp())}"
+    _complete_paid_parking_session(db, payment)
+    create_notification(
+        db,
+        "Cash payment received",
+        f"৳{float(payment.net_amount):.2f} received for parking record #{record_id}.",
+        "INFO",
+        user.user_id,
+    )
+    record_activity(
+        db,
+        user.user_id,
+        "CASH_PAYMENT_CONFIRMED",
         "PAYMENT",
         payment.payment_id,
         {"record_id": record_id, "status": payment.payment_status.value},

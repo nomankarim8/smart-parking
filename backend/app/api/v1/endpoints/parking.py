@@ -17,6 +17,13 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
         if camera.camera_role != CameraRole.ENTRY: raise HTTPException(400,"Selected camera is not configured as an ENTRY camera")
     source_text = payload.raw_ocr_text or payload.license_plate
     parsed = parse_plate(source_text)
+    if payload.ocr_confidence is not None and (
+        payload.ocr_confidence < 0.80 or not parsed.get("valid")
+    ):
+        raise HTTPException(
+            409,
+            "Plate recognition requires manual verification before vehicle entry.",
+        )
     plate = parsed["normalized_plate"] or normalize(payload.license_plate)
     resolved_category_id = parsed.get("suggested_category_id") or payload.category_id
     black=db.query(Blacklist).filter_by(plate_number=plate,is_active=True).first()
@@ -58,27 +65,41 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
     return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"status":record.status.value,"blacklist_alert":bool(black)}
 @router.post("/exit",response_model=ExitOut)
 def exit_vehicle(payload:ExitIn,db:Session=Depends(get_db),user=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):
+    try:
+        payment_method = PaymentMethod(payload.payment_method.upper())
+    except ValueError as exc:
+        raise HTTPException(422, "Unsupported payment method") from exc
     if payload.camera_id:
         camera=db.get(Camera,payload.camera_id)
         if not camera: raise HTTPException(404,"Exit camera not found")
         if camera.camera_role != CameraRole.EXIT: raise HTTPException(400,"Selected camera is not configured as an EXIT camera")
     plate=normalize(payload.license_plate); vehicle=db.query(Vehicle).filter_by(normalized_plate=plate).first()
     if not vehicle: raise HTTPException(404,"Vehicle not found")
-    record=db.query(ParkingRecord).filter_by(vehicle_id=vehicle.vehicle_id,status=ParkingStatus.PARKED).first()
+    record=db.query(ParkingRecord).filter_by(vehicle_id=vehicle.vehicle_id,status=ParkingStatus.PARKED).with_for_update().first()
     if not record: raise HTTPException(404,"Active parking record not found")
+    if db.query(Payment).filter_by(record_id=record.record_id).first():
+        raise HTTPException(409,"An exit payment is already pending for this parking session.")
     exit_time=datetime.utcnow(); details=calculate(db,vehicle.category_id,record.entry_time,exit_time); discount=max(0,float(payload.discount)); net=max(0,details["amount"]-discount)
-    record.exit_time=exit_time; record.status=ParkingStatus.COMPLETED; record.exit_image_url=payload.exit_image_url
+    if discount > details["amount"]:
+        raise HTTPException(422, "Discount cannot exceed the parking fee.")
+    record.exit_time=exit_time; record.exit_image_url=payload.exit_image_url
     if payload.camera_id:
         db.add(PlateDetection(camera_id=payload.camera_id,parking_record_id=record.record_id,normalized_plate=plate,confidence=0,image_url=payload.exit_image_url,verification_status="MANUAL_REQUIRED"))
-    slot=db.get(ParkingSlot,record.slot_id); slot.status=SlotStatus.AVAILABLE; slot.current_vehicle_id=None
     no_charge=net<=0
-    pm=Payment(record_id=record.record_id,total_duration_minutes=details["minutes"],gross_amount=details["amount"],discount_amount=discount,net_amount=net,payment_method=PaymentMethod(payload.payment_method),payment_status=PaymentStatus.PAID if no_charge else PaymentStatus.PENDING,payment_time=exit_time if no_charge else None,transaction_reference="NO_CHARGE" if no_charge else None,created_by=user.user_id); db.add(pm)
-    create_notification(db,"Parking session ended",f"{vehicle.plate_number} exited from slot {slot.slot_number}. "+("No payment was due." if no_charge else f"A payment of ৳{net:.2f} is due."),"INFO",user.user_id)
+    slot=db.query(ParkingSlot).filter_by(slot_id=record.slot_id).with_for_update().one()
+    if slot.current_vehicle_id != vehicle.vehicle_id or slot.status != SlotStatus.OCCUPIED:
+        raise HTTPException(409,"Parking slot state conflicts with the active session; ask an administrator to review it.")
+    if no_charge:
+        record.status=ParkingStatus.COMPLETED
+        slot.status=SlotStatus.AVAILABLE
+        slot.current_vehicle_id=None
+    pm=Payment(record_id=record.record_id,total_duration_minutes=details["minutes"],gross_amount=details["amount"],discount_amount=discount,net_amount=net,payment_method=payment_method,payment_status=PaymentStatus.PAID if no_charge else PaymentStatus.PENDING,payment_time=exit_time if no_charge else None,transaction_reference="NO_CHARGE" if no_charge else None,created_by=user.user_id); db.add(pm)
+    create_notification(db,"Parking exit pending payment" if not no_charge else "Parking session ended",f"{vehicle.plate_number} "+("exited from" if no_charge else "is awaiting payment for") + f" slot {slot.slot_number}. "+("No payment was due." if no_charge else f"A payment of ৳{net:.2f} is due; the slot remains occupied until payment is confirmed."),"INFO" if no_charge else "WARNING",user.user_id)
     if not no_charge:
         create_notification(db,"Payment due",f"৳{net:.2f} is due for parking record #{record.record_id} ({vehicle.plate_number}).","WARNING",user.user_id)
     record_activity(db,user.user_id,"PARKING_SESSION_ENDED","PARKING_RECORD",record.record_id,{"plate_number":vehicle.plate_number,"slot":slot.slot_number,"payment_due":net})
     db.commit()
-    return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"exit_time":exit_time,"duration_minutes":details["minutes"],"gross_amount":details["amount"],"discount_amount":discount,"net_amount":net,"payment_status":"PENDING","payment_method":payload.payment_method}
+    return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"exit_time":exit_time,"duration_minutes":details["minutes"],"gross_amount":details["amount"],"discount_amount":discount,"net_amount":net,"payment_status":pm.payment_status.value,"payment_method":payment_method.value}
 @router.get("/active")
 def active(db:Session=Depends(get_db),_=Depends(current_user)):
     records=db.query(ParkingRecord).filter_by(status=ParkingStatus.PARKED).order_by(ParkingRecord.entry_time.desc()).all(); return [{"record_id":r.record_id,"plate":r.vehicle.plate_number,"slot":r.slot.slot_number,"category":r.vehicle.category.category_name,"entry_time":r.entry_time.isoformat()} for r in records]
