@@ -10,7 +10,7 @@ type CameraItem = {
   location: string;
   camera_role: 'ENTRY'|'EXIT'|'PARKING_ZONE';
   camera_type: string;
-  stream_url: string|null;
+  stream_configured: boolean;
   status: 'ONLINE'|'OFFLINE'|'UNKNOWN';
 };
 type ALPRStatus = {
@@ -40,12 +40,12 @@ function CameraFeed({camera}:{camera:CameraItem}){
   useEffect(()=>{
     let active=true;
     setStreamTicket('');
-    if(camera.status!=='ONLINE'||!camera.stream_url)return;
+    if(camera.status!=='ONLINE'||!camera.stream_configured)return;
     api.post<{ticket:string}>(`/cameras/${camera.camera_id}/stream-ticket`)
       .then(response=>{if(active)setStreamTicket(response.data.ticket)})
       .catch(()=>{if(active)setError('Could not authorize this camera feed. Refresh the page or check camera permissions.')});
     return()=>{active=false};
-  },[camera.camera_id,camera.status,camera.stream_url]);
+  },[camera.camera_id,camera.status,camera.stream_configured]);
 
   useEffect(()=>{
     const image=imageRef.current;
@@ -108,7 +108,7 @@ function CameraFeed({camera}:{camera:CameraItem}){
       {streamLoaded&&plateOverlay&&result?.plate_box&&<div className={`pointer-events-none absolute border-2 ${result.verification_required?'border-amber-400':'border-emerald-400'}`} style={{left:plateOverlay.left,top:plateOverlay.top,width:plateOverlay.width,height:plateOverlay.height}}><span className={`absolute -top-6 left-0 max-w-64 truncate px-1.5 py-1 text-[10px] font-black text-white ${result.verification_required?'bg-amber-600':'bg-emerald-600'}`}>{result.normalized_plate||'Plate · verify'} · {(result.confidence*100).toFixed(0)}%</span></div>}
     </div>
     <div className="space-y-3 p-4">
-      <div className="flex flex-wrap gap-2"><button type="button" disabled={!streamUrl||camera.status==='OFFLINE'} onClick={()=>{setScanning(value=>!value);setError('')}} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${scanning?'bg-rose-500/10 text-rose-300':'bg-indigo-500/15 text-indigo-200'}`}><ScanLine size={14}/>{scanning?'Stop ALPR':'Start plate scan'}</button>{(error||!streamLoaded)&&camera.status==='ONLINE'&&camera.stream_url&&<button type="button" onClick={()=>void requestStreamTicket().catch(()=>setError('Could not reconnect to this camera. Check its source and connection.'))} className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200">Reconnect feed</button>}{result?.normalized_plate&&<Link to={`/entry?plate=${encodeURIComponent(result.normalized_plate)}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"><ExternalLink size={13}/> Use plate at entry</Link>}</div>
+      <div className="flex flex-wrap gap-2"><button type="button" disabled={!streamUrl||camera.status==='OFFLINE'} onClick={()=>{setScanning(value=>!value);setError('')}} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-40 ${scanning?'bg-rose-500/10 text-rose-300':'bg-indigo-500/15 text-indigo-200'}`}><ScanLine size={14}/>{scanning?'Stop ALPR':'Start plate scan'}</button>{(error||!streamLoaded)&&camera.status==='ONLINE'&&camera.stream_configured&&<button type="button" onClick={()=>void requestStreamTicket().catch(()=>setError('Could not reconnect to this camera. Check its source and connection.'))} className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200">Reconnect feed</button>}{result?.normalized_plate&&<Link to={`/entry?plate=${encodeURIComponent(result.normalized_plate)}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"><ExternalLink size={13}/> Use plate at entry</Link>}</div>
       {result&&<div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-slate-500">Latest normalized plate</span><span className={`text-[10px] font-bold ${result.verification_required?'text-amber-300':'text-emerald-300'}`}>{result.verification_required?'VERIFY':'AUTO ACCEPTED'} · {(result.confidence*100).toFixed(0)}%</span></div><div className="mt-1 break-words text-lg font-black tracking-wide text-white">{result.normalized_plate||'No plate found'}</div><div className="mt-1 text-[10px] text-slate-500">OCR: {result.ocr_language==='bn'?'Bangla':result.ocr_language==='en'?'English/Latin':'Unclassified'}{result.class_bn?` · Bangla class ${result.class_bn} → ${result.class_code}`:''}</div></div>}
       {error&&<p role="status" className="flex items-start gap-2 text-xs text-amber-300"><AlertTriangle size={14} className="mt-0.5 shrink-0"/>{error}</p>}
     </div>

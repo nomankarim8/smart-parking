@@ -4,7 +4,7 @@ import api from '../services/api';
 import type { ALPRResult } from '../types';
 import { ScanLine, UploadCloud, Camera as CameraIcon, MapPin, ShieldCheck, AlertTriangle } from 'lucide-react';
 
-type Cam = { camera_id:number; camera_name:string; location:string; camera_role:string; camera_type:string; status:string; stream_url?:string|null };
+type Cam = { camera_id:number; camera_name:string; location:string; camera_role:string; camera_type:string; status:string; stream_configured:boolean };
 type QrDetector = { detect:(source:HTMLVideoElement)=>Promise<{rawValue:string}[]> };
 type QrDetectorConstructor = new (options:{formats:string[]})=>QrDetector;
 

@@ -55,7 +55,7 @@ def history(
 ):
     range_start,range_end,query=history_query(db,start_date,end_date,plate,category_id,payment_status,session_status)
     total=query.count()
-    rows=query.order_by(ParkingRecord.record_id.desc()).offset((page-1)*page_size).limit(page_size).all()
+    rows=query.add_columns(Payment.payment_status).order_by(ParkingRecord.record_id.desc()).offset((page-1)*page_size).limit(page_size).all()
     return {
         "start_date":range_start.isoformat(),
         "end_date":range_end.isoformat(),
@@ -71,9 +71,9 @@ def history(
                 "entry_time":row.entry_time.isoformat(),
                 "exit_time":row.exit_time.isoformat() if row.exit_time else None,
                 "status":row.status.value,
-                "payment_status":row.payment.payment_status.value if row.payment else None,
+                "payment_status":payment_status.value if payment_status else None,
             }
-            for row in rows
+            for row,payment_status in rows
         ],
     }
 
@@ -89,10 +89,10 @@ def csv_export(
     _=Depends(current_user),
 ):
     _,_,query=history_query(db,start_date,end_date,plate,category_id,payment_status,session_status)
-    out=StringIO(); w=csv.writer(out); w.writerow(["Parking ID","Plate","Category","Slot","Entry","Exit","Status"])
-    records=query.order_by(ParkingRecord.record_id.desc()).limit(5000)
-    for r in records:
-        w.writerow([safe_csv_cell(v) for v in [r.record_id,r.vehicle.plate_number,r.vehicle.category.category_name,r.slot.slot_number,r.entry_time,r.exit_time or "",r.status.value]])
+    out=StringIO(); w=csv.writer(out); w.writerow(["Parking ID","Plate","Category","Slot","Entry","Exit","Status","Payment status"])
+    records=query.add_columns(Payment.payment_status).order_by(ParkingRecord.record_id.desc()).limit(5000)
+    for r,payment_status in records:
+        w.writerow([safe_csv_cell(v) for v in [r.record_id,r.vehicle.plate_number,r.vehicle.category.category_name,r.slot.slot_number,r.entry_time,r.exit_time or "",r.status.value,payment_status.value if payment_status else ""]])
     out.seek(0); return StreamingResponse(iter([out.getvalue()]),media_type="text/csv",headers={"Content-Disposition":"attachment; filename=parking_history.csv"})
 
 @router.get("/summary")

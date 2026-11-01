@@ -10,7 +10,7 @@ type CameraItem = {
   location: string;
   camera_role: CameraRole;
   camera_type: string;
-  stream_url?: string | null;
+  stream_configured: boolean;
   status: 'ONLINE' | 'OFFLINE' | 'UNKNOWN';
 };
 
@@ -97,7 +97,7 @@ export default function CameraSidebar() {
   useEffect(() => {
     let active = true;
     setStreamTicket(null);
-    if (!selectedCamera || selectedCamera.status !== 'ONLINE' || !selectedCamera.stream_url) return;
+    if (!selectedCamera || selectedCamera.status !== 'ONLINE' || !selectedCamera.stream_configured) return;
     api.post<{ ticket: string }>(`/cameras/${selectedCamera.camera_id}/stream-ticket`)
       .then(({ data }) => {
         if (active) setStreamTicket({ cameraId: selectedCamera.camera_id, ticket: data.ticket });
@@ -107,8 +107,8 @@ export default function CameraSidebar() {
         if (active) setFailedStreamId(selectedCamera.camera_id);
       });
     return () => { active = false; };
-  }, [selectedCamera?.camera_id, selectedCamera?.status, selectedCamera?.stream_url]);
-  const canViewStream = !!selectedCamera && selectedCamera.status === 'ONLINE' && !!selectedCamera.stream_url && streamTicket?.cameraId === selectedCamera.camera_id;
+  }, [selectedCamera?.camera_id, selectedCamera?.status, selectedCamera?.stream_configured]);
+  const canViewStream = !!selectedCamera && selectedCamera.status === 'ONLINE' && selectedCamera.stream_configured && streamTicket?.cameraId === selectedCamera.camera_id;
   const streamUrl = selectedCamera && canViewStream
     ? `${API_BASE}/cameras/${selectedCamera.camera_id}/stream?ticket=${encodeURIComponent(streamTicket.ticket)}&v=${streamVersion}`
     : '';
@@ -220,7 +220,7 @@ export default function CameraSidebar() {
                           ? 'Feed unavailable'
                           : selectedCamera.status !== 'ONLINE'
                             ? `Camera ${selectedCamera.status.toLowerCase()}`
-                            : !selectedCamera.stream_url
+                            : !selectedCamera.stream_configured
                               ? 'No video source configured'
                               : 'Sign in to view live footage'}
                       </p>
