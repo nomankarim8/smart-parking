@@ -29,20 +29,21 @@ def list_blacklist(
 @router.post("/")
 def add_blacklist(payload:BlacklistCreate,db:Session=Depends(get_db),user=Depends(require_roles("SUPER_ADMIN","ADMIN"))):
     plate=normalize(payload.plate_number)
-    if not plate:
-        raise HTTPException(422,"A valid normalized plate number is required")
+    reason=payload.reason.strip()
+    if not plate or not reason:
+        raise HTTPException(422,"A valid normalized plate number and non-empty reason are required")
     b=db.query(Blacklist).filter_by(plate_number=plate).first()
     if b and b.is_active:
         raise HTTPException(409,"This vehicle is already on the blacklist")
     if b:
         before={"is_active":b.is_active,"reason":b.reason,"notes":b.notes}
-        b.reason=payload.reason.strip()
+        b.reason=reason
         b.notes=payload.notes
         b.added_by=user.user_id
         b.is_active=True
         record_activity(db,user.user_id,"BLACKLIST_REACTIVATED","BLACKLIST",b.blacklist_id,{"before":before,"after":{"is_active":True,"reason":b.reason,"notes":b.notes}})
     else:
-        b=Blacklist(plate_number=plate,reason=payload.reason.strip(),added_by=user.user_id,notes=payload.notes)
+        b=Blacklist(plate_number=plate,reason=reason,added_by=user.user_id,notes=payload.notes)
         db.add(b)
         db.flush()
         record_activity(db,user.user_id,"BLACKLIST_CREATED","BLACKLIST",b.blacklist_id,{"plate_number":plate,"reason":b.reason,"notes":b.notes,"is_active":True})
@@ -61,6 +62,8 @@ def update_blacklist(blacklist_id:int,payload:BlacklistUpdate,db:Session=Depends
     before={"reason":b.reason,"notes":b.notes}
     if "reason" in changes:
         b.reason=changes["reason"].strip()
+        if not b.reason:
+            raise HTTPException(422,"Blacklist reason cannot be empty")
     if "notes" in changes:
         b.notes=changes["notes"]
     record_activity(db,user.user_id,"BLACKLIST_UPDATED","BLACKLIST",b.blacklist_id,{"before":before,"after":{"reason":b.reason,"notes":b.notes}})

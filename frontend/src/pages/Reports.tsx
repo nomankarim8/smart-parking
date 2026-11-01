@@ -28,7 +28,14 @@ type Filters = {
   plate: string;
 };
 
-const today = new Date().toLocaleDateString('en-CA');
+const todayParts = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Dhaka',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).formatToParts(new Date());
+const today = `${todayParts.find(part => part.type === 'year')?.value}-${todayParts.find(part => part.type === 'month')?.value}-${todayParts.find(part => part.type === 'day')?.value}`;
+const initialFilters = { start_date: today, end_date: today, plate: '' };
 const emptySummary: Summary = {
   start_date: today,
   end_date: today,
@@ -39,7 +46,8 @@ const emptySummary: Summary = {
 };
 
 export default function Reports() {
-  const [filters, setFilters] = useState<Filters>({ start_date: today, end_date: today, plate: '' });
+  const [filters, setFilters] = useState<Filters>(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
   const [summary, setSummary] = useState<Summary>(emptySummary);
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [page, setPage] = useState(1);
@@ -53,9 +61,9 @@ export default function Reports() {
     setLoading(true);
     setError('');
     const params = {
-      start_date: filters.start_date || undefined,
-      end_date: filters.end_date || undefined,
-      plate: filters.plate.trim() || undefined,
+      start_date: appliedFilters.start_date || undefined,
+      end_date: appliedFilters.end_date || undefined,
+      plate: appliedFilters.plate.trim() || undefined,
     };
     try {
       const [summaryResponse, historyResponse] = await Promise.all([
@@ -71,7 +79,7 @@ export default function Reports() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [appliedFilters]);
 
   useEffect(() => {
     void load(1);
@@ -87,9 +95,9 @@ export default function Reports() {
     try {
       const response = await api.get('/reports/history.csv', {
         params: {
-          start_date: filters.start_date || undefined,
-          end_date: filters.end_date || undefined,
-          plate: filters.plate.trim() || undefined,
+          start_date: appliedFilters.start_date || undefined,
+          end_date: appliedFilters.end_date || undefined,
+          plate: appliedFilters.plate.trim() || undefined,
         },
         responseType: 'blob',
       });
@@ -141,7 +149,7 @@ export default function Reports() {
           Plate contains
           <input value={filters.plate} onChange={event => updateFilter('plate', event.target.value)} placeholder="Search normalized plate" className="mt-2 block w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-3 text-sm text-white" />
         </label>
-        <button type="button" onClick={() => void load(1)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white">
+        <button type="button" onClick={() => setAppliedFilters(filters)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white">
           <Search size={16} /> Apply
         </button>
       </section>
