@@ -48,13 +48,11 @@
 * { box-sizing: border-box; }
 
 html {
-  min-width: 320px;
   background: var(--background);
   scroll-behavior: smooth;
 }
 
 body {
-  min-width: 320px;
   margin: 0;
   background: var(--background);
   color: var(--foreground);
@@ -151,6 +149,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background-size: 24px 24px;
 }
 .tabular-nums, .font-mono { font-variant-numeric: tabular-nums; }
+.recharts-cartesian-axis-tick-value { fill: var(--muted); }
+.recharts-cartesian-grid line { stroke: var(--border); }
+
+[class~="text-indigo-200"],
+[class~="text-indigo-300"] { color: var(--primary); }
+[class~="text-sky-200"],
+[class~="text-sky-300"] { color: var(--secondary); }
+[class~="bg-indigo-500/5"],
+[class~="bg-indigo-500/10"],
+[class~="bg-indigo-500/15"],
+[class~="bg-indigo-400/10"] { background-color: color-mix(in srgb, var(--primary) 10%, var(--surface)); }
+button[class~="bg-indigo-500"],
+a[class~="bg-indigo-500"] {
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+button[class~="bg-indigo-500"]:hover,
+a[class~="bg-indigo-500"]:hover { background-color: var(--primary-hover); }
 
 :root[data-theme="light"] [class~="text-white"]:not(button):not([class~="text-transparent"]) {
   color: var(--foreground);
@@ -181,19 +197,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 :root[data-theme="light"] [class~="border-slate-800/80"],
 :root[data-theme="light"] [class~="border-slate-700"],
 :root[data-theme="light"] [class~="border-slate-600"] { border-color: var(--border); }
-:root[data-theme="light"] [class~="bg-indigo-500/5"],
-:root[data-theme="light"] [class~="bg-indigo-500/10"],
-:root[data-theme="light"] [class~="bg-indigo-500/15"],
-:root[data-theme="light"] [class~="bg-indigo-400/10"] { background-color: color-mix(in srgb, var(--primary) 10%, var(--surface)); }
-:root[data-theme="light"] [class~="text-indigo-200"],
-:root[data-theme="light"] [class~="text-indigo-300"] { color: var(--primary); }
-:root[data-theme="light"] button[class~="bg-indigo-500"],
-:root[data-theme="light"] a[class~="bg-indigo-500"] {
-  background-color: var(--primary);
-  color: var(--on-primary);
-}
-:root[data-theme="light"] button[class~="bg-indigo-500"]:hover,
-:root[data-theme="light"] a[class~="bg-indigo-500"]:hover { background-color: var(--primary-hover); }
 :root[data-theme="light"] input,
 :root[data-theme="light"] select,
 :root[data-theme="light"] textarea {

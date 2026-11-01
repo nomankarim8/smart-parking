@@ -34,20 +34,23 @@ type NavItem = {
   roles?: string[];
 };
 
+const OPERATIONS_ROLES = ['SUPER_ADMIN', 'ADMIN', 'OPERATOR'];
+const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN'];
+
 const nav: NavItem[] = [
   { to: '/', label: 'Dashboard', Icon: LayoutDashboard },
-  { to: '/entry', label: 'Vehicle entry', Icon: ScanLine },
-  { to: '/exit', label: 'Vehicle exit', Icon: LogOut },
+  { to: '/entry', label: 'Vehicle entry', Icon: ScanLine, roles: OPERATIONS_ROLES },
+  { to: '/exit', label: 'Vehicle exit', Icon: LogOut, roles: OPERATIONS_ROLES },
   { to: '/vehicles', label: 'Vehicles', Icon: CarFront },
   { to: '/slots', label: 'Parking slots', Icon: ParkingSquare },
-  { to: '/reservations', label: 'Reservations', Icon: TicketCheck },
+  { to: '/reservations', label: 'Reservations', Icon: TicketCheck, roles: OPERATIONS_ROLES },
   { to: '/notifications', label: 'Notifications', Icon: Bell },
-  { to: '/payments', label: 'Payments', Icon: CreditCard },
-  { to: '/sensors', label: 'Sensor simulator', Icon: Radio, roles: ['SUPER_ADMIN', 'ADMIN', 'OPERATOR'] },
-  { to: '/audit', label: 'Audit log', Icon: ClipboardList, roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { to: '/payments', label: 'Payments', Icon: CreditCard, roles: OPERATIONS_ROLES },
+  { to: '/sensors', label: 'Sensor simulator', Icon: Radio, roles: OPERATIONS_ROLES },
+  { to: '/audit', label: 'Audit log', Icon: ClipboardList, roles: ADMIN_ROLES },
   { to: '/history', label: 'Parking history', Icon: History },
-  { to: '/blacklist', label: 'Blacklist', Icon: ShieldAlert },
-  { to: '/cameras', label: 'Camera management', Icon: Video },
+  { to: '/blacklist', label: 'Blacklist', Icon: ShieldAlert, roles: ADMIN_ROLES },
+  { to: '/cameras', label: 'Camera management', Icon: Video, roles: ADMIN_ROLES },
   { to: '/monitor', label: 'Live monitoring', Icon: MonitorPlay },
   { to: '/reports', label: 'Reports', Icon: FileBarChart2 },
   { to: '/settings', label: 'Settings & pricing', Icon: Settings2 },
