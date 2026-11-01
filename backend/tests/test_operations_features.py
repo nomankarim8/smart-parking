@@ -336,7 +336,7 @@ def test_forecast_returns_hourly_demand_and_validates_range():
     engine.dispose()
 
 
-def test_exit_releases_slot_and_creates_pending_payment_due_notification():
+def test_exit_keeps_slot_until_cash_payment_is_confirmed():
     engine, session_factory, client = make_client()
     with session_factory() as db:
         vehicle, slot = seed_staff(db)
@@ -362,7 +362,48 @@ def test_exit_releases_slot_and_creates_pending_payment_due_notification():
         assert client.get("/payments/due").json()[0]["record_id"] == record_id
         assert client.get("/notifications/").json()[0]["title"] == "Payment due"
         with session_factory() as db:
+            assert db.query(ParkingSlot).one().status == SlotStatus.OCCUPIED
+            assert db.query(ParkingRecord).one().status == ParkingStatus.PARKED
+
+        assert client.post(
+            "/parking/exit",
+            json={"license_plate": "TEST 123", "payment_method": "CASH"},
+        ).status_code == 409
+
+        confirmed = client.post(f"/payments/{record_id}/cash/confirm")
+        assert confirmed.status_code == 200
+        assert confirmed.json()["payment_status"] == "PAID"
+        assert confirmed.json()["transaction_reference"].startswith("CASH-")
+        with session_factory() as db:
             assert db.query(ParkingSlot).one().status == SlotStatus.AVAILABLE
+            assert db.query(ParkingRecord).one().status == ParkingStatus.COMPLETED
+        assert client.get("/audit/").json()[0]["action"] == "CASH_PAYMENT_CONFIRMED"
+        assert client.post(f"/payments/{record_id}/cash/confirm").status_code == 409
+
+    engine.dispose()
+
+
+def test_entry_rejects_low_confidence_plate_without_creating_session():
+    engine, session_factory, client = make_client()
+    with session_factory() as db:
+        seed_staff(db)
+        db.commit()
+
+    with client:
+        response = client.post(
+            "/parking/entry",
+            json={
+                "license_plate": "DHAKA METRO GA 12-3456",
+                "raw_ocr_text": "DHAKA METRO GA 12-3456",
+                "ocr_confidence": 0.42,
+                "category_id": 2,
+            },
+        )
+        assert response.status_code == 409
+        assert "manual verification" in response.json()["detail"].lower()
+        with session_factory() as db:
+            assert db.query(Vehicle).count() == 1
+            assert db.query(ParkingRecord).count() == 0
 
     engine.dispose()
 
