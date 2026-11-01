@@ -78,7 +78,7 @@ Copy the payment variables from `backend/.env.example` into `backend/.env`, then
 
 - Add a camera in **Cameras**, select it in **Video input**, and upload a supported clip (maximum 100 MB). The clip is stored under `backend/uploads/camera_demos/`; the registered camera is switched to Upload/Online.
 - Open **CCTV Monitor** to view the server-looped feed. Select **Start plate scan** to sample the live feed every four seconds and run the existing ALPR pipeline. Each detection is shown in normalized English text; **Use plate at entry** pre-fills Vehicle Entry, where an operator must verify and confirm entry.
-- For CCTV/IP/RTSP sources, configure a stream URL that is reachable by the backend host, and set the camera online. USB camera sources may use a local device index such as `0`. Only use feeds you own or are authorized to monitor.
+- For CCTV/IP/RTSP sources, configure a stream URL reachable by the backend host and add its hostname/IP/CIDR to the server-side `CAMERA_ALLOWED_HOSTS` setting. Network credentials are encrypted at rest and source URLs are never returned by the camera API; clients receive only a `stream_configured` flag and short-lived stream tickets. USB camera sources use a numeric device index. Only use feeds you own or are authorized to monitor.
 - Automatic accuracy depends on image quality, a compatible trained plate detector, and installed OCR engines/languages. Install Tesseract with both `eng` and `ben` language data to recognize Bengali-script plates. The system does not bypass operator confirmation for parking entry.
 
 ## Important

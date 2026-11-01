@@ -107,3 +107,10 @@ status endpoint is available at `/api/v1/alpr/status`; without a trained
 not enabled. A vehicle detector and camera-based parking-slot ROI occupancy
 pipeline are not yet integrated. Do not treat demo video or sensor simulation
 as evidence that those AI features are working.
+
+Camera source URLs are not exposed by the camera API; it returns a
+`stream_configured` boolean instead. Network camera hosts must be explicitly
+listed in `CAMERA_ALLOWED_HOSTS`, and network credentials are encrypted at
+rest using `CAMERA_CREDENTIALS_KEY`. Back up this key securely: losing it makes
+previously encrypted camera credentials unreadable. Never put camera URLs or
+keys in frontend environment variables.
