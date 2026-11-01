@@ -33,15 +33,27 @@
   `C:\xampp\mysql\data_recovered`, `innodb_force_recovery=0`.
 - Database check: `smart_parking_db` is accessible; its existing rows and
   tables were retained.
-- MySQL backup script `-CheckOnly`: passed against the configured database.
+- MySQL backup: created a timestamped SQL dump in the ignored `backups\`
+  directory. Verified its database declaration, 16 table definitions, and 14
+  data statements. The backup directory ACL disables inheritance and grants
+  access to the current Windows user.
 - Backend: `32 passed` with `python -m pytest tests -q` from `backend\`.
 - Backend Python `compileall`: passed.
 - Frontend: `npm run build` passed (TypeScript check plus Vite production build).
-- Live app smoke checks: Apache, FastAPI root, and Vite frontend all returned
-  HTTP `200`.
+- Live API checks: authenticated camera list, ALPR status, and dashboard stats
+  all returned HTTP `200` from the virtual-environment backend on port `8001`.
+- Live frontend: Vite on port `5173`; its current process is configured to use
+  the verified API on port `8001`. Apache on port `80` returned HTTP `200`.
+- XAMPP MariaDB is listening on port `3302`.
 
 The test runner reports one upstream Starlette/httpx deprecation warning; it
 does not fail the test suite.
+
+Port `8000` was still held by an older backend process using base Python without
+the IANA timezone data required for `Asia/Dhaka`; its dashboard stats route
+returned HTTP `500`. That listener was not treated as safe to terminate. The
+working-tree app is running on port `8001` with the project virtual
+environment. See the fallback commands in `docs/WINDOWS_RUNBOOK.md`.
 
 ## Not complete / external blockers
 
@@ -63,9 +75,9 @@ does not fail the test suite.
 - Live camera hardware and payment/SMS merchant credentials were not available
   for end-to-end testing. Provider callback/production payment operation is
   not certified by the local test suite.
-- Backup connectivity was tested, but an actual production-data restore was
-  not run. Restore only a trusted backup into a disposable test database before
-  relying on a recovery procedure.
+- A production-data restore was not run because it can replace the active
+  database. Restore only a trusted backup into a disposable test database
+  before relying on a recovery procedure.
 - PDF reports, camera-health history, a frontend date-range picker, detection
   image retention controls, and comprehensive audit/search filters remain
   future work.
@@ -95,5 +107,7 @@ does not fail the test suite.
 - `scripts/mysql-tools.ps1`
 - `scripts/backup_mysql.ps1`
 - `scripts/restore_mysql.ps1`
+- `.gitignore`
+- `docs/IMPLEMENTATION_STATUS.md`
 - `docs/WINDOWS_RUNBOOK.md`
 - `docs/LIVE_CAMERA_SIDEBAR.md`

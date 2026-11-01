@@ -38,17 +38,12 @@ function Get-SmartParkingMySqlTools {
 function Protect-SmartParkingBackupDirectory {
     param([Parameter(Mandatory = $true)][string]$Path)
 
-    $identity = [Security.Principal.WindowsIdentity]::GetCurrent().User
-    $acl = New-Object Security.AccessControl.DirectorySecurity
-    $acl.SetOwner($identity)
-    $acl.SetAccessRuleProtection($true, $false)
-    $rule = New-Object Security.AccessControl.FileSystemAccessRule(
-        $identity,
-        [Security.AccessControl.FileSystemRights]::FullControl,
-        [Security.AccessControl.AccessControlType]::Allow
-    )
-    $acl.AddAccessRule($rule)
-    Set-Acl -LiteralPath $Path -AclObject $acl
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $account = '*{0}:(OI)(CI)F' -f $identity
+    & icacls.exe $Path '/inheritance:r' '/grant:r' $account | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to restrict backup directory ACL for '$Path'."
+    }
 }
 
 function New-SmartParkingMySqlOptionFile {

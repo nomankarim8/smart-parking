@@ -34,6 +34,22 @@ python main.py
 
 Open `http://localhost:8000/docs`.
 
+If port `8000` is occupied by an old backend process, do not start a second
+backend on that port. Use the project virtual environment on an available port,
+then point the Vite dev server at it:
+
+```powershell
+# Backend terminal, from smart-parking\backend
+..\venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8001
+
+# Frontend terminal, from smart-parking\frontend
+$env:VITE_API_URL = "http://127.0.0.1:8001/api/v1"
+npm run dev -- --host 127.0.0.1
+```
+
+Run the backend through the project virtual environment so its installed
+dependencies, including Windows `tzdata`, are available.
+
 ## Frontend
 
 Open a second terminal:
