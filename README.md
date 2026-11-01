@@ -37,6 +37,19 @@ University-level full-stack CSE project using FastAPI, MySQL, React + TypeScript
 
 See `docs/WINDOWS_RUNBOOK.md`, `docs/ALPR_MODEL_SETUP.md`, `docs/INSTALLATION.md` and `docs/USER_MANUAL.md`.
 
+### Docker Compose
+
+Copy the root `.env.example` to `.env`, then set distinct values for
+`DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `SECRET_KEY` (at least 32 random
+characters), and `INITIAL_ADMIN_PASSWORD` (at least 12 characters). The
+application container runs outside development mode and will refuse weak or
+missing signing/admin secrets. To generate a signing secret, run
+`python -c "import secrets; print(secrets.token_urlsafe(48))"` and paste the
+result into `.env`. For network cameras, also generate a Fernet key with
+`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+and configure `CAMERA_CREDENTIALS_KEY` plus the required camera host allowlist.
+Then run `docker compose up --build`. Do not commit the populated `.env`.
+
 ## Operations demo features
 
 - **bKash/Nagad checkout:** vehicle exit creates a pending payment. Configure merchant sandbox credentials, a public HTTPS callback URL and gateway keys in `backend/.env`; payment completion is only recorded after the gateway is queried and the verified amount/currency match. See the provider configuration section below.

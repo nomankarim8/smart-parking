@@ -3,22 +3,35 @@ services:
     image: mysql:8.0
     restart: unless-stopped 
     environment:
-      MYSQL_DATABASE: smart_parking_db
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${DB_NAME:-smart_parking_db}
+      MYSQL_USER: ${DB_USER:-smart_parking_app}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the project .env file}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the project .env file}
     ports: ["3306:3306"]
     volumes: [mysql_data:/var/lib/mysql]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
   backend:
     build: ./backend
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: root
-      DB_NAME: smart_parking_db
-      SECRET_KEY: change-me-in-docker
+      DB_USER: ${DB_USER:-smart_parking_app}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the project .env file}
+      DB_NAME: ${DB_NAME:-smart_parking_db}
+      APP_ENV: production
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the project .env file}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD in the project .env file}
+      CAMERA_CREDENTIALS_KEY: ${CAMERA_CREDENTIALS_KEY:-}
+      CAMERA_ALLOWED_HOSTS: ${CAMERA_ALLOWED_HOSTS:-}
       CORS_ORIGINS: '["http://localhost:5173"]'
     ports: ["8000:8000"]
-    depends_on: [mysql]
+    depends_on:
+      mysql:
+        condition: service_healthy
   frontend:
     image: node:22-alpine
     working_dir: /app
