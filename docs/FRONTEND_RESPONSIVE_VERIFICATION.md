@@ -15,6 +15,9 @@
 - A browser-only mocked `OPERATOR` session loaded its account-specific Dark
   preference, did not expose the Audit navigation item, showed Appearance
   controls, and restored the guest Light preference after sign-out.
+- The required-password-rotation screen rendered without overflow at seven
+  widths from 320 to 1920 px and retained the authenticated theme selector.
+- The desktop account menu exposed settings and sign-out actions.
 - Mobile navigation opened as a dialog, was keyboard-dismissable with Escape,
   and returned focus to its trigger.
 - Production build (`npm run build`) passed TypeScript and Vite production
