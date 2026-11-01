@@ -16,15 +16,41 @@ def get_db():
 def init_db():
     from app.models import all_models # noqa
     Base.metadata.create_all(bind=engine)
-    # Backward-compatible migration for databases created before camera roles existed.
-    try:
-        inspector = inspect(engine)
-        if inspector.has_table("cameras") and "camera_role" not in {c["name"] for c in inspector.get_columns("cameras")}:
-            with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE cameras ADD COLUMN camera_role ENUM('ENTRY','EXIT','PARKING_ZONE') NOT NULL DEFAULT 'PARKING_ZONE' AFTER location"))
-    except Exception:
-        # Keep startup resilient; the explicit SQL migration remains available.
-        pass
+    inspector = inspect(engine)
+    if inspector.has_table("cameras") and "camera_role" not in {column["name"] for column in inspector.get_columns("cameras")}:
+        if engine.dialect.name not in {"mysql", "mariadb"}:
+            raise RuntimeError("The camera-role migration requires MySQL or MariaDB.")
+        with engine.begin() as connection:
+            connection.execute(text(
+                "ALTER TABLE cameras ADD COLUMN camera_role "
+                "ENUM('ENTRY','EXIT','PARKING_ZONE') NOT NULL DEFAULT 'PARKING_ZONE' AFTER location"
+            ))
+
+    if inspector.has_table("parking_records") and "active_vehicle_id" not in {
+        column["name"] for column in inspector.get_columns("parking_records")
+    }:
+        if engine.dialect.name not in {"mysql", "mariadb"}:
+            raise RuntimeError("The active-session migration requires MySQL or MariaDB.")
+        with engine.connect() as connection:
+            duplicates = connection.execute(text(
+                "SELECT vehicle_id FROM parking_records WHERE status='PARKED' "
+                "GROUP BY vehicle_id HAVING COUNT(*) > 1 LIMIT 1"
+            )).first()
+        if duplicates:
+            raise RuntimeError(
+                "Cannot enforce active-session uniqueness: duplicate active sessions exist. "
+                "Resolve them manually before applying database/migrations/001_active_vehicle_unique_mysql.sql."
+            )
+        with engine.begin() as connection:
+            connection.execute(text(
+                "ALTER TABLE parking_records ADD COLUMN active_vehicle_id INT "
+                "GENERATED ALWAYS AS (CASE WHEN status='PARKED' THEN vehicle_id ELSE NULL END) STORED"
+            ))
+            connection.execute(text(
+                "CREATE UNIQUE INDEX uq_parking_records_active_vehicle "
+                "ON parking_records(active_vehicle_id)"
+            ))
+
     from app.services.bootstrap import bootstrap
     with SessionLocal() as db:
         bootstrap(db)

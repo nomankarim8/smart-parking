@@ -6,11 +6,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from jose import jwt
+from PIL import Image
+from io import BytesIO
+from cryptography.fernet import Fernet
 
 from app.api.deps import current_user
 from app.api.v1.endpoints import alpr, cameras
 from app.core.database import Base, get_db
-from app.models.all_models import Camera, CameraRole, CameraStatus, CameraType, Role, User
+from app.core.config import settings
+from app.models.all_models import ActivityLog, Camera, CameraRole, CameraStatus, CameraType, Role, User
+from app.services.camera_sources import decrypt_camera_source
 
 
 def make_camera_client():
@@ -92,7 +97,8 @@ def test_upload_video_sets_camera_demo_feed(monkeypatch, tmp_path):
         assert response.status_code == 200
         assert response.json()["camera_type"] == "UPLOAD"
         assert response.json()["status"] == "ONLINE"
-        assert response.json()["stream_url"].startswith(str(tmp_path))
+        assert response.json()["stream_configured"] is True
+        assert "stream_url" not in response.json()
         assert len(list(tmp_path.glob("*.mp4"))) == 1
 
     engine.dispose()
@@ -117,6 +123,9 @@ def test_video_upload_rejects_unapproved_file_type(tmp_path, monkeypatch):
 def test_alpr_video_frames_can_be_recognized_without_persisting_images(monkeypatch, tmp_path):
     engine, _session_factory, client = make_camera_client()
     monkeypatch.setattr(alpr, "UPLOAD_DIR", tmp_path)
+    image = Image.new("RGB", (16, 16), "white")
+    image_data = BytesIO()
+    image.save(image_data, format="JPEG")
     monkeypatch.setattr(
         alpr.alpr_service,
         "recognize",
@@ -145,7 +154,7 @@ def test_alpr_video_frames_can_be_recognized_without_persisting_images(monkeypat
     with client:
         response = client.post(
             "/alpr/detect?persist=false",
-            files={"file": ("frame.jpg", b"mock-image-frame", "image/jpeg")},
+            files={"file": ("frame.jpg", image_data.getvalue(), "image/jpeg")},
         )
         assert response.status_code == 200
         assert response.json()["normalized_plate"] == "DHAKA METRO GA 12-3456"
@@ -155,13 +164,140 @@ def test_alpr_video_frames_can_be_recognized_without_persisting_images(monkeypat
     engine.dispose()
 
 
+def test_camera_sources_are_allowlisted_encrypted_and_never_serialized(monkeypatch):
+    engine, session_factory, client = make_camera_client()
+    key = Fernet.generate_key().decode("ascii")
+    monkeypatch.setattr(settings, "CAMERA_CREDENTIALS_KEY", key)
+    monkeypatch.setattr(settings, "CAMERA_ALLOWED_HOSTS", "10.0.0.0/8")
+
+    with client:
+        response = client.post(
+            "/cameras/",
+            json={
+                "camera_name": "ZONE-SECRET",
+                "location": "Restricted zone",
+                "camera_role": "PARKING_ZONE",
+                "camera_type": "RTSP",
+                "stream_url": "rtsp://camera-user:camera-password@10.2.3.4:554/live",
+            },
+        )
+        assert response.status_code == 201
+        assert response.json()["stream_configured"] is True
+        assert "stream_url" not in response.json()
+        assert b"camera-password" not in response.content
+
+        with session_factory() as db:
+            camera = db.query(Camera).filter_by(camera_name="ZONE-SECRET").one()
+            assert camera.stream_url.startswith("encrypted:v1:")
+            assert "camera-password" not in camera.stream_url
+            assert decrypt_camera_source(camera.stream_url) == "rtsp://camera-user:camera-password@10.2.3.4:554/live"
+            activity = db.query(ActivityLog).filter_by(action="CAMERA_CREATED").one()
+            assert "camera-password" not in str(activity.details)
+
+        listed = client.get("/cameras/")
+        assert listed.status_code == 200
+        assert b"camera-password" not in listed.content
+        assert "stream_url" not in listed.json()[0]
+
+    engine.dispose()
+
+
+def test_camera_source_rejects_unallowlisted_host_and_unsupported_scheme():
+    engine, _session_factory, client = make_camera_client()
+
+    with client:
+        unallowlisted = client.post(
+            "/cameras/",
+            json={
+                "camera_name": "UNTRUSTED",
+                "location": "Untrusted",
+                "camera_role": "PARKING_ZONE",
+                "camera_type": "RTSP",
+                "stream_url": "rtsp://127.0.0.1:8000/private",
+            },
+        )
+        assert unallowlisted.status_code == 422
+        assert "allowlist" in unallowlisted.json()["detail"]
+
+        unsupported = client.post(
+            "/cameras/",
+            json={
+                "camera_name": "INVALID-SCHEME",
+                "location": "Invalid",
+                "camera_role": "PARKING_ZONE",
+                "camera_type": "RTSP",
+                "stream_url": "file:///C:/Windows/win.ini",
+            },
+        )
+        assert unsupported.status_code == 422
+        assert "protocol" in unsupported.json()["detail"]
+
+    engine.dispose()
+
+
+def test_alpr_media_is_private_and_stored_under_configured_directory(monkeypatch, tmp_path):
+    engine, _session_factory, client = make_camera_client()
+    monkeypatch.setattr(alpr, "UPLOAD_DIR", tmp_path)
+    image_data = BytesIO()
+    Image.new("RGB", (24, 24), "white").save(image_data, format="PNG")
+    monkeypatch.setattr(
+        alpr.alpr_service,
+        "recognize",
+        lambda _data: {
+            "input_image_url": None,
+            "license_plate": "",
+            "normalized_plate": "",
+            "raw_text": "",
+            "confidence": 0.0,
+            "status": "MANUAL_REQUIRED",
+            "verification_required": True,
+            "detector": "Manual verification",
+        },
+    )
+
+    with client:
+        detected = client.post(
+            "/alpr/detect",
+            files={"file": ("plate.png", image_data.getvalue(), "image/png")},
+        )
+        assert detected.status_code == 200
+        media_url = detected.json()["input_image_url"]
+        assert media_url.startswith("/api/v1/alpr/media/")
+        media_name = media_url.rsplit("/", 1)[-1]
+        assert (tmp_path / media_name).is_file()
+        retrieved = client.get(f"/alpr/media/{media_name}")
+        assert retrieved.status_code == 200
+        assert retrieved.headers["cache-control"] == "private, no-store"
+        assert client.get("/uploads/" + media_name).status_code == 404
+        assert client.get("/alpr/media/..%2Fsecret.jpg").status_code == 404
+        assert client.get("/alpr/media/" + "f" * 32 + ".jpg").status_code == 404
+
+        client.app.dependency_overrides.pop(current_user)
+        unauthorized = client.get(f"/alpr/media/{media_name}")
+        assert unauthorized.status_code == 401
+
+    engine.dispose()
+
+
+def test_alpr_rejects_content_type_spoofed_non_image():
+    engine, _session_factory, client = make_camera_client()
+    with client:
+        response = client.post(
+            "/alpr/detect",
+            files={"file": ("fake.jpg", b"not-an-image", "image/jpeg")},
+        )
+        assert response.status_code == 400
+    engine.dispose()
+
+
 def test_stream_requires_camera_scoped_short_lived_ticket(monkeypatch):
     engine, session_factory, client = make_camera_client()
     camera_id = seed_camera(session_factory)
     with session_factory() as db:
         camera = db.get(Camera, camera_id)
         camera.status = CameraStatus.ONLINE
-        camera.stream_url = "demo-source"
+        camera.camera_type = CameraType.USB
+        camera.stream_url = "0"
         db.commit()
     monkeypatch.setattr(cameras.CameraStream, "frames", lambda _self: iter([b"frame"]))
 

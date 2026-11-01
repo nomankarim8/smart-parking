@@ -13,7 +13,7 @@ type CameraItem = {
   location: string;
   camera_role: CameraRole;
   camera_type: CameraType;
-  stream_url?: string | null;
+  stream_configured: boolean;
   status: CameraStatus;
 };
 
@@ -23,7 +23,6 @@ type FormState = {
   camera_role: CameraRole;
   camera_type: CameraType;
   stream_url: string;
-  status: CameraStatus;
 };
 
 const emptyForm: FormState = {
@@ -32,7 +31,6 @@ const emptyForm: FormState = {
   camera_role: 'PARKING_ZONE',
   camera_type: 'DEMO',
   stream_url: '',
-  status: 'UNKNOWN',
 };
 
 const roleMeta: Record<CameraRole, { label: string; icon: string; description: string }> = {
@@ -97,8 +95,7 @@ export default function Cameras() {
       location: camera.location,
       camera_role: camera.camera_role,
       camera_type: camera.camera_type,
-      stream_url: camera.stream_url || '',
-      status: camera.status,
+      stream_url: '',
     });
     setMessage('');
   };
@@ -117,7 +114,10 @@ export default function Cameras() {
     setSaving(true);
     setMessage('');
     try {
-      const payload = { ...form, stream_url: form.stream_url.trim() || null };
+      const { stream_url, ...cameraFields } = form;
+      const payload = stream_url.trim()
+        ? { ...cameraFields, stream_url: stream_url.trim() }
+        : editing ? cameraFields : { ...cameraFields, stream_url: '' };
       if (editing) {
         await api.put(`/cameras/${editing}`, payload);
         setMessage('Camera configuration updated successfully.');
@@ -238,6 +238,7 @@ export default function Cameras() {
                         <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                           <span className="inline-flex items-center gap-1"><MapPin size={13}/>{camera.location}</span>
                           <span className="inline-flex items-center gap-1"><Video size={13}/>{camera.camera_type}</span>
+                          <span>{camera.stream_configured ? 'Source configured' : 'No source'}</span>
                           <span>{meta.label}</span>
                         </div>
                       </div>
@@ -271,8 +272,8 @@ export default function Cameras() {
               <label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Camera Type</span><select value={form.camera_type} onChange={e => updateField('camera_type', e.target.value as CameraType)} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none"><option value="USB">USB Camera</option><option value="IP">IP Camera</option><option value="RTSP">RTSP Stream</option><option value="UPLOAD">Upload Only</option><option value="DEMO">Demo Camera</option></select></label>
             </div>
 
-            <label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Stream URL (optional)</span><input value={form.stream_url} onChange={e => updateField('stream_url', e.target.value)} placeholder="rtsp://192.168.1.50:554/stream" className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 font-mono text-sm text-white outline-none focus:border-indigo-400/60" /></label>
-            <label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Status</span><select value={form.status} onChange={e => updateField('status', e.target.value as CameraStatus)} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white outline-none"><option value="ONLINE">Online</option><option value="OFFLINE">Offline</option><option value="UNKNOWN">Unknown</option></select></label>
+            <label className="block"><span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">Stream source (optional)</span><input value={form.stream_url} onChange={e => updateField('stream_url', e.target.value)} placeholder={editing ? 'Enter a new source only to replace the saved source' : 'rtsp://camera-host:554/stream'} className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-3 font-mono text-sm text-white outline-none focus:border-indigo-400/60" /><span className="mt-2 block text-xs text-slate-500">Saved sources are never returned by the API. Network camera hosts must be added to the server-side CAMERA_ALLOWED_HOSTS allowlist.</span></label>
+            <p className="text-xs text-slate-500">Connection health is set by the server, not manually from this form.</p>
 
             <div className="rounded-xl border border-white/5 bg-white/[0.025] p-4 text-xs text-slate-500">
               <div className="flex items-center gap-2 font-bold text-slate-300"><CircleDot size={14} />{roleMeta[form.camera_role].label}</div>

@@ -12,11 +12,14 @@ from app.cameras.stream import CameraStream
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_camera_stream_ticket
+from app.schemas.camera import CameraCreate, CameraUpdate
 from app.models.all_models import Camera, CameraRole, CameraStatus, CameraType, User
 from app.services.activity import record_activity
+from app.services.camera_sources import decrypt_camera_source, encrypt_camera_source, validate_camera_source
+from app.services.media import camera_demo_root
 
 router = APIRouter()
-CAMERA_VIDEO_DIR = Path(__file__).resolve().parents[4] / "uploads" / "camera_demos"
+CAMERA_VIDEO_DIR = camera_demo_root()
 MAX_VIDEO_BYTES = 100 * 1024 * 1024
 ALLOWED_VIDEO_TYPES = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 
@@ -28,7 +31,7 @@ def serialize(camera: Camera) -> dict:
         "location": camera.location,
         "camera_role": camera.camera_role.value,
         "camera_type": camera.camera_type.value,
-        "stream_url": camera.stream_url,
+        "stream_configured": bool(camera.stream_url),
         "status": camera.status.value,
         "created_at": camera.created_at.isoformat() if camera.created_at else None,
         "updated_at": camera.updated_at.isoformat() if camera.updated_at else None,
@@ -43,25 +46,18 @@ def list_cameras(db: Session = Depends(get_db), _=Depends(current_user)):
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_camera(
-    payload: dict,
+    payload: CameraCreate,
     db: Session = Depends(get_db),
     _=Depends(require_roles("SUPER_ADMIN", "ADMIN")),
 ):
-    name = str(payload.get("camera_name", "")).strip()
-    location = str(payload.get("location", "")).strip()
-    role = str(payload.get("camera_role", "PARKING_ZONE")).upper()
-    camera_type = str(payload.get("camera_type", "DEMO")).upper()
-    status_value = str(payload.get("status", "UNKNOWN")).upper()
-
-    if not name or not location:
-        raise HTTPException(400, "camera_name and location are required")
-
+    name = payload.camera_name.strip()
+    location = payload.location.strip()
+    role_enum = CameraRole(payload.camera_role)
+    type_enum = CameraType(payload.camera_type)
     try:
-        role_enum = CameraRole(role)
-        type_enum = CameraType(camera_type)
-        status_enum = CameraStatus(status_value)
+        source = encrypt_camera_source(validate_camera_source(type_enum, payload.stream_url))
     except ValueError as exc:
-        raise HTTPException(400, "Invalid camera_role, camera_type, or status") from exc
+        raise HTTPException(422, str(exc)) from exc
 
     if db.query(Camera).filter(Camera.camera_name == name).first():
         raise HTTPException(409, "Camera name already exists")
@@ -75,12 +71,12 @@ def create_camera(
         location=location,
         camera_role=role_enum,
         camera_type=type_enum,
-        stream_url=payload.get("stream_url") or None,
-        status=status_enum,
+        stream_url=source,
+        status=CameraStatus.UNKNOWN,
     )
     db.add(camera)
     db.flush()
-    record_activity(db, _.user_id, "CAMERA_CREATED", "CAMERA", camera.camera_id, {"camera_name":camera.camera_name,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value})
+    record_activity(db, _.user_id, "CAMERA_CREATED", "CAMERA", camera.camera_id, {"camera_name":camera.camera_name,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value,"stream_configured":bool(source)})
     db.commit()
     db.refresh(camera)
     return serialize(camera)
@@ -89,7 +85,7 @@ def create_camera(
 @router.put("/{camera_id}")
 def update_camera(
     camera_id: int,
-    payload: dict,
+    payload: CameraUpdate,
     db: Session = Depends(get_db),
     _=Depends(require_roles("SUPER_ADMIN", "ADMIN")),
 ):
@@ -97,9 +93,10 @@ def update_camera(
     if not camera:
         raise HTTPException(404, "Camera not found")
 
-    before={"camera_name":camera.camera_name,"location":camera.location,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value,"status":camera.status.value,"stream_url":camera.stream_url}
-    if "camera_name" in payload:
-        name = str(payload["camera_name"]).strip()
+    fields = payload.dict(exclude_unset=True)
+    before={"camera_name":camera.camera_name,"location":camera.location,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value,"status":camera.status.value,"stream_configured":bool(camera.stream_url)}
+    if "camera_name" in fields:
+        name = fields["camera_name"].strip()
         if not name:
             raise HTTPException(400, "camera_name cannot be empty")
         duplicate = db.query(Camera).filter(
@@ -110,14 +107,11 @@ def update_camera(
             raise HTTPException(409, "Camera name already exists")
         camera.camera_name = name
 
-    if "location" in payload:
-        camera.location = str(payload["location"]).strip()
+    if "location" in fields:
+        camera.location = fields["location"].strip()
 
-    if "camera_role" in payload:
-        try:
-            new_role = CameraRole(str(payload["camera_role"]).upper())
-        except ValueError as exc:
-            raise HTTPException(400, "Invalid camera_role") from exc
+    if "camera_role" in fields:
+        new_role = CameraRole(fields["camera_role"])
         if new_role in (CameraRole.ENTRY, CameraRole.EXIT):
             duplicate_role = db.query(Camera).filter(
                 Camera.camera_role == new_role,
@@ -127,22 +121,17 @@ def update_camera(
                 raise HTTPException(409, f"{new_role.value} camera already exists")
         camera.camera_role = new_role
 
-    if "camera_type" in payload:
+    if "camera_type" in fields:
+        camera.camera_type = CameraType(fields["camera_type"])
+
+    if "stream_url" in fields or "camera_type" in fields:
         try:
-            camera.camera_type = CameraType(str(payload["camera_type"]).upper())
+            source = fields.get("stream_url", decrypt_camera_source(camera.stream_url))
+            camera.stream_url = encrypt_camera_source(validate_camera_source(camera.camera_type, source))
         except ValueError as exc:
-            raise HTTPException(400, "Invalid camera_type") from exc
+            raise HTTPException(422, str(exc)) from exc
 
-    if "status" in payload:
-        try:
-            camera.status = CameraStatus(str(payload["status"]).upper())
-        except ValueError as exc:
-            raise HTTPException(400, "Invalid status") from exc
-
-    if "stream_url" in payload:
-        camera.stream_url = payload["stream_url"] or None
-
-    record_activity(db, _.user_id, "CAMERA_UPDATED", "CAMERA", camera.camera_id, {"before":before,"after":{"camera_name":camera.camera_name,"location":camera.location,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value,"status":camera.status.value,"stream_url":camera.stream_url}})
+    record_activity(db, _.user_id, "CAMERA_UPDATED", "CAMERA", camera.camera_id, {"before":before,"after":{"camera_name":camera.camera_name,"location":camera.location,"camera_role":camera.camera_role.value,"camera_type":camera.camera_type.value,"status":camera.status.value,"stream_configured":bool(camera.stream_url)}})
     db.commit()
     db.refresh(camera)
     return serialize(camera)
@@ -157,7 +146,7 @@ def delete_camera(
     camera = db.get(Camera, camera_id)
     if not camera:
         raise HTTPException(404, "Camera not found")
-    details={"camera_name":camera.camera_name,"camera_role":camera.camera_role.value,"location":camera.location}; camera_id=camera.camera_id
+    details={"camera_name":camera.camera_name,"camera_role":camera.camera_role.value,"location":camera.location,"stream_configured":bool(camera.stream_url)}; camera_id=camera.camera_id
     db.delete(camera)
     record_activity(db, _.user_id, "CAMERA_DELETED", "CAMERA", camera_id, details)
     db.commit()
@@ -208,7 +197,7 @@ async def upload_demo_video(
         before = {
             "camera_type": camera.camera_type.value,
             "status": camera.status.value,
-            "stream_url": camera.stream_url,
+            "stream_configured": bool(camera.stream_url),
         }
         camera.camera_type = CameraType.UPLOAD
         camera.status = CameraStatus.ONLINE
@@ -265,9 +254,17 @@ def stream_camera(
 
     if not camera.stream_url:
         raise HTTPException(400, "No stream URL configured for this camera")
+    try:
+        source = decrypt_camera_source(camera.stream_url)
+        source = validate_camera_source(camera.camera_type, source)
+    except ValueError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    if source and source.lower().startswith(("rtsp://", "rtsps://", "http://", "https://")):
+        camera.stream_url = encrypt_camera_source(source)
+        db.commit()
 
     return StreamingResponse(
-        CameraStream(camera.stream_url).frames(),
+        CameraStream(source).frames(),
         media_type="multipart/x-mixed-replace; boundary=frame",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -291,6 +288,10 @@ def create_stream_ticket(
         raise HTTPException(503, "Camera is offline")
     if not camera.stream_url:
         raise HTTPException(400, "No stream URL configured for this camera")
+    try:
+        validate_camera_source(camera.camera_type, decrypt_camera_source(camera.stream_url))
+    except ValueError as exc:
+        raise HTTPException(503, str(exc)) from exc
     return {
         "ticket": create_camera_stream_ticket(viewer.username, camera_id),
         "expires_in": 60,

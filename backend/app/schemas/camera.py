@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 CameraRole = Literal["ENTRY", "EXIT", "PARKING_ZONE"]
 CameraType = Literal["USB", "IP", "RTSP", "UPLOAD", "DEMO"]
@@ -13,7 +13,6 @@ class CameraCreate(BaseModel):
     camera_role: CameraRole = "PARKING_ZONE"
     camera_type: CameraType = "DEMO"
     stream_url: Optional[str] = None
-    status: CameraStatus = "UNKNOWN"
 
 
 class CameraUpdate(BaseModel):
@@ -22,19 +21,17 @@ class CameraUpdate(BaseModel):
     camera_role: Optional[CameraRole] = None
     camera_type: Optional[CameraType] = None
     stream_url: Optional[str] = None
-    status: Optional[CameraStatus] = None
 
 
 class CameraResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     camera_id: int
     camera_name: str
     location: str
     camera_role: str
     camera_type: str
-    stream_url: Optional[str]
+    stream_configured: bool
     status: str
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True

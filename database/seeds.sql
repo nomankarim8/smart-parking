@@ -10,7 +10,7 @@ INSERT IGNORE INTO parking_slots(slot_number,category_id,status) VALUES
 ('B01',1,'AVAILABLE'),('B02',1,'AVAILABLE'),('B03',1,'AVAILABLE'),('B04',1,'AVAILABLE'),
 ('C01',3,'AVAILABLE'),('C02',3,'AVAILABLE'),('D01',4,'AVAILABLE'),('D02',5,'AVAILABLE');
 INSERT IGNORE INTO cameras(camera_name,location,camera_role,camera_type,status) VALUES
-('ENTRY-01','Main Entry Gate','ENTRY','DEMO','ONLINE'),
-('EXIT-01','Main Exit Gate','EXIT','DEMO','ONLINE'),
-('ZONE-A','Parking Zone A','PARKING_ZONE','DEMO','ONLINE');
--- Default password for demo user is set by backend first-start bootstrap; this SQL intentionally does not hard-code passwords.
+('ENTRY-01','Main Entry Gate','ENTRY','DEMO','UNKNOWN'),
+('EXIT-01','Main Exit Gate','EXIT','DEMO','UNKNOWN'),
+('ZONE-A','Parking Zone A','PARKING_ZONE','DEMO','UNKNOWN');
+-- The first administrator is created by backend bootstrap using INITIAL_ADMIN_PASSWORD.

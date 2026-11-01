@@ -1,6 +1,7 @@
 from datetime import datetime
 from fastapi import APIRouter,Depends,HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from app.core.database import get_db
 from app.models.all_models import Vehicle,ParkingSlot,SlotStatus,ParkingRecord,ParkingStatus,Payment,PaymentMethod,PaymentStatus,Blacklist,Notification,Camera,CameraRole,PlateDetection
 from app.services.plate import normalize, parse_plate
@@ -9,6 +10,17 @@ from app.schemas.models import EntryIn,EntryOut,ExitIn,ExitOut
 from app.api.deps import current_user,require_roles
 from app.services.activity import create_notification,record_activity
 router=APIRouter()
+
+def _raise_entry_conflict(db:Session,plate:str,exc:IntegrityError)->None:
+    db.rollback()
+    existing_vehicle=db.query(Vehicle).filter_by(normalized_plate=plate).first()
+    if existing_vehicle and db.query(ParkingRecord).filter_by(
+        vehicle_id=existing_vehicle.vehicle_id,
+        status=ParkingStatus.PARKED,
+    ).first():
+        raise HTTPException(409,"Vehicle already has an active parking session") from exc
+    raise HTTPException(409,"Vehicle or parking slot changed during entry; retry the operation.") from exc
+
 @router.post("/entry",response_model=EntryOut)
 def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):
     if payload.camera_id:
@@ -29,7 +41,11 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
     black=db.query(Blacklist).filter_by(plate_number=plate,is_active=True).first()
     vehicle=db.query(Vehicle).filter_by(normalized_plate=plate).first()
     if not vehicle:
-        vehicle=Vehicle(plate_number=plate,normalized_plate=plate,category_id=resolved_category_id); db.add(vehicle); db.flush()
+        vehicle=Vehicle(plate_number=plate,normalized_plate=plate,category_id=resolved_category_id); db.add(vehicle)
+        try:
+            db.flush()
+        except IntegrityError as exc:
+            _raise_entry_conflict(db,plate,exc)
     elif parsed.get("suggested_category_id") and vehicle.category_id != parsed["suggested_category_id"]:
         # Do not silently overwrite a registered vehicle category. Keep the database authoritative.
         resolved_category_id = vehicle.category_id
@@ -38,7 +54,11 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
     slot=db.query(ParkingSlot).filter(ParkingSlot.category_id==vehicle.category_id,ParkingSlot.status==SlotStatus.AVAILABLE).order_by(ParkingSlot.slot_number).with_for_update().first()
     if not slot: raise HTTPException(409,"Parking Full - No Available Slot for this category")
     slot.status=SlotStatus.OCCUPIED; slot.current_vehicle_id=vehicle.vehicle_id
-    record=ParkingRecord(vehicle_id=vehicle.vehicle_id,slot_id=slot.slot_id,entry_time=datetime.utcnow(),raw_ocr_text=payload.raw_ocr_text,ocr_confidence=payload.ocr_confidence,entry_image_url=payload.entry_image_url,plate_image_url=payload.plate_image_url); db.add(record); db.flush()
+    record=ParkingRecord(vehicle_id=vehicle.vehicle_id,slot_id=slot.slot_id,entry_time=datetime.utcnow(),raw_ocr_text=payload.raw_ocr_text,ocr_confidence=payload.ocr_confidence,entry_image_url=payload.entry_image_url,plate_image_url=payload.plate_image_url); db.add(record)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        _raise_entry_conflict(db,plate,exc)
     if payload.camera_id:
         db.add(PlateDetection(
             camera_id=payload.camera_id,
@@ -61,7 +81,11 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
     else:
         create_notification(db,"Parking session started",f"{plate} entered and was assigned slot {slot.slot_number}.","INFO",user.user_id)
     record_activity(db,user.user_id,"PARKING_SESSION_STARTED","PARKING_RECORD",record.record_id,{"plate_number":plate,"slot":slot.slot_number,"blacklist_alert":bool(black)})
-    db.commit(); db.refresh(record)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        _raise_entry_conflict(db,plate,exc)
+    db.refresh(record)
     return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"status":record.status.value,"blacklist_alert":bool(black)}
 @router.post("/exit",response_model=ExitOut)
 def exit_vehicle(payload:ExitIn,db:Session=Depends(get_db),user=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):

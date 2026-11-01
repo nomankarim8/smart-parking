@@ -12,7 +12,7 @@ SMART PARKING - WINDOWS SETUP
 10) Start backend: python main.py
 11) Open a second terminal: cd frontend && npm install && npm run dev
 12) Open http://localhost:5173
-13) Demo login: admin / Admin@12345
+13) Sign in with the initial administrator password configured in backend\.env.
 14) Swagger: http://localhost:8000/docs
 
 ALPR notes:

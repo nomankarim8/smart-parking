@@ -88,10 +88,12 @@ CREATE TABLE IF NOT EXISTS parking_records (
   entry_image_url VARCHAR(500), exit_image_url VARCHAR(500), plate_image_url VARCHAR(500),
   raw_ocr_text VARCHAR(255), ocr_confidence DECIMAL(5,4),
   status ENUM('PARKED','COMPLETED','CANCELLED') NOT NULL DEFAULT 'PARKED',
+  active_vehicle_id INT GENERATED ALWAYS AS (CASE WHEN status='PARKED' THEN vehicle_id ELSE NULL END) STORED,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_record_vehicle FOREIGN KEY(vehicle_id) REFERENCES vehicles(vehicle_id),
   CONSTRAINT fk_record_slot FOREIGN KEY(slot_id) REFERENCES parking_slots(slot_id),
+  UNIQUE KEY uq_parking_records_active_vehicle(active_vehicle_id),
   INDEX idx_record_status_entry(status, entry_time), INDEX idx_record_vehicle(vehicle_id), INDEX idx_record_slot(slot_id), INDEX idx_record_exit(exit_time)
 ) ENGINE=InnoDB;
 

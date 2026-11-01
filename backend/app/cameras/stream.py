@@ -20,7 +20,7 @@ class CameraStream:
     def frames(self) -> Generator[bytes, None, None]:
         cap = self._open()
         if not cap.isOpened():
-            raise RuntimeError(f"Unable to open camera source: {self.source}")
+            raise RuntimeError("Unable to open configured camera source.")
 
         try:
             try:

@@ -3,12 +3,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Smart AI-Based Vehicle Parking Management System" 
     API_V1_STR: str = "/api/v1"
+    APP_ENV: str = "production"
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_USER: str = "root"
     DB_PASSWORD: str = ""
     DB_NAME: str = "smart_parking_db"
-    SECRET_KEY: str = "change-me"
+    SECRET_KEY: str = ""
+    INITIAL_ADMIN_PASSWORD: str = ""
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
@@ -17,6 +19,11 @@ class Settings(BaseSettings):
     VEHICLE_MODEL_PATH: str = "../ai-models/vehicle_yolo.pt"
     ALPR_CONFIDENCE_THRESHOLD: float = 0.80
     BUSINESS_TIMEZONE: str = "Asia/Dhaka"
+    MEDIA_ROOT: str = "uploads"
+    DEMO_VIDEO_ROOT: str = "../demo-videos"
+    CAMERA_ALLOWED_HOSTS: str = ""
+    CAMERA_MAX_USB_INDEX: int = 8
+    CAMERA_CREDENTIALS_KEY: str = ""
     TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     BENGALI_OCR_ENABLED: bool = True
     PAYMENT_MODE: str = "sandbox"
@@ -39,6 +46,28 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_FROM_NUMBER: str = ""
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    def validate_security_configuration(self) -> None:
+        if self.APP_ENV not in {"development", "test", "production"}:
+            raise RuntimeError("APP_ENV must be development, test, or production.")
+        if self.APP_ENV != "development" and (
+            len(self.SECRET_KEY) < 32
+            or self.SECRET_KEY in {"change-me", "replace-with-a-long-random-secret"}
+        ):
+            raise RuntimeError(
+                "SECRET_KEY must be a unique random value of at least 32 characters "
+                "outside explicitly configured development mode."
+            )
+        if self.CAMERA_MAX_USB_INDEX < 0:
+            raise RuntimeError("CAMERA_MAX_USB_INDEX must be zero or greater.")
+
+    @property
+    def CAMERA_ALLOWED_HOST_SET(self) -> set[str]:
+        return {
+            host.strip().lower()
+            for host in self.CAMERA_ALLOWED_HOSTS.split(",")
+            if host.strip()
+        }
 
     @property
     def DATABASE_URL(self) -> str:

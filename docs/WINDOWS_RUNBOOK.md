@@ -90,12 +90,13 @@ Dashboard and report date filters use `BUSINESS_TIMEZONE` (default
 `Asia/Dhaka`) and UTC database timestamps. On Windows, install dependencies
 from `backend\requirements.txt`; this includes the IANA `tzdata` package.
 
-## Demo login
+## Initial administrator
 
-Username: `admin`
-Password: `Admin@12345`
-
-Change the password before any public deployment.
+Before first startup, set a unique `INITIAL_ADMIN_PASSWORD` (at least 12
+characters) in `backend\.env`. The bootstrap process creates the initial
+administrator only when this value is configured. Do not copy a shared demo
+password into a deployment. Authenticated users can change their password at
+`POST /api/v1/auth/change-password`.
 
 ## Camera and model status
 

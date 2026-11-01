@@ -32,7 +32,8 @@ University-level full-stack CSE project using FastAPI, MySQL, React + TypeScript
 5. Run `python main.py`.
 6. Open another terminal in `frontend/` and run `npm install` then `npm run dev`.
 7. Open `http://localhost:5173`.
-8. Login with `admin` / `Admin@12345`.
+8. Sign in with the administrator account created from `INITIAL_ADMIN_PASSWORD` in `backend/.env`.
+   Set a unique password before first startup and change it after the first sign-in.
 
 See `docs/WINDOWS_RUNBOOK.md`, `docs/ALPR_MODEL_SETUP.md`, `docs/INSTALLATION.md` and `docs/USER_MANUAL.md`.
 

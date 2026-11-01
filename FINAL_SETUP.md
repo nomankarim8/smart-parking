@@ -11,7 +11,7 @@
 7. Run `python main.py`.
 8. In `frontend/`, run `npm install` and `npm run dev`.
 9. Open `http://localhost:5173`.
-10. Login with `admin` / `Admin@12345`.
+10. Sign in with the administrator account created from `INITIAL_ADMIN_PASSWORD` in `backend/.env`.
 
 ## B. Upgrade an older downloaded ZIP
 
