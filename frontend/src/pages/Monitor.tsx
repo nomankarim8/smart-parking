@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Camera, CircleDot, ExternalLink, ScanLine, Video } from 'lucide-react';
 import api from '../services/api';
@@ -19,8 +19,18 @@ function CameraFeed({camera}:{camera:CameraItem}){
   const [scanning,setScanning]=useState(false);
   const [result,setResult]=useState<ALPRResult|null>(null);
   const [error,setError]=useState('');
-  const token=localStorage.getItem('smart_parking_token')||'';
-  const streamUrl=useMemo(()=>camera.stream_url&&token?api.getUri({url:`/cameras/${camera.camera_id}/stream`,params:{token}}):'', [camera.camera_id,camera.stream_url,token]);
+  const [streamTicket,setStreamTicket]=useState('');
+  const streamUrl=streamTicket?api.getUri({url:`/cameras/${camera.camera_id}/stream`,params:{ticket:streamTicket}}):'';
+
+  useEffect(()=>{
+    let active=true;
+    setStreamTicket('');
+    if(camera.status!=='ONLINE'||!camera.stream_url)return;
+    api.post<{ticket:string}>(`/cameras/${camera.camera_id}/stream-ticket`)
+      .then(response=>{if(active)setStreamTicket(response.data.ticket)})
+      .catch(()=>{if(active)setError('Could not authorize this camera feed. Refresh the page or check camera permissions.')});
+    return()=>{active=false};
+  },[camera.camera_id,camera.status,camera.stream_url]);
 
   useEffect(()=>{
     if(!scanning)return;

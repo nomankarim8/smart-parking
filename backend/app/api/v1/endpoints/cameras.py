@@ -4,14 +4,14 @@ from uuid import uuid4
 import cv2
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
-from jose import JWTError
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user, require_roles
 from app.cameras.stream import CameraStream
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import decode_token
+from app.core.security import create_camera_stream_ticket
 from app.models.all_models import Camera, CameraRole, CameraStatus, CameraType, User
 from app.services.activity import record_activity
 
@@ -234,19 +234,23 @@ async def upload_demo_video(
 @router.get("/{camera_id}/stream")
 def stream_camera(
     camera_id: int,
-    token: str = Query(..., description="Short-lived JWT/access token used by the camera viewer."),
+    ticket: str = Query(..., description="Short-lived camera-scoped stream ticket."),
     db: Session = Depends(get_db),
 ):
-    # Browser <img> cannot attach an Authorization header, so the viewer
-    # passes the already-issued JWT as a query parameter. The token is only
-    # used to authorize access; the actual camera credentials remain server-side.
     try:
-        username = decode_token(token)
+        claims = jwt.decode(
+            ticket,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
     except JWTError as exc:
-        raise HTTPException(status_code=401, detail="Invalid or expired stream token") from exc
+        raise HTTPException(status_code=401, detail="Invalid or expired camera stream ticket") from exc
+
+    if claims.get("scope") != "camera:stream" or claims.get("camera_id") != camera_id:
+        raise HTTPException(status_code=401, detail="Camera stream ticket is not valid for this camera")
 
     viewer = db.query(User).filter(
-        User.username == username,
+        User.username == claims.get("sub"),
         User.is_active.is_(True),
     ).first()
     if not viewer:
@@ -272,3 +276,22 @@ def stream_camera(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("/{camera_id}/stream-ticket")
+def create_stream_ticket(
+    camera_id: int,
+    db: Session = Depends(get_db),
+    viewer: User = Depends(current_user),
+):
+    camera = db.get(Camera, camera_id)
+    if not camera:
+        raise HTTPException(404, "Camera not found")
+    if camera.status == CameraStatus.OFFLINE:
+        raise HTTPException(503, "Camera is offline")
+    if not camera.stream_url:
+        raise HTTPException(400, "No stream URL configured for this camera")
+    return {
+        "ticket": create_camera_stream_ticket(viewer.username, camera_id),
+        "expires_in": 60,
+    }

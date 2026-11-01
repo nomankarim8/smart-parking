@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.all_models import Role,VehicleCategory,PricingRule,ParkingSlot,User,Camera,CameraRole,CameraRole
+from app.models.all_models import Role,VehicleCategory,PricingRule,ParkingSlot,User,Camera,CameraRole,CameraStatus
 from app.core.security import hash_password
 
 def bootstrap(db:Session):
@@ -21,6 +21,11 @@ def bootstrap(db:Session):
         role=db.query(Role).filter_by(role_name="SUPER_ADMIN").one(); db.add(User(username="admin",email="admin@smartparking.local",full_name="System Administrator",role_id=role.role_id,password_hash=hash_password("Admin@12345")))
     for name,loc,role in [("ENTRY-01","Main Entry Gate",CameraRole.ENTRY),("EXIT-01","Main Exit Gate",CameraRole.EXIT),("ZONE-A","Parking Zone A",CameraRole.PARKING_ZONE)]:
         cam=db.query(Camera).filter_by(camera_name=name).first()
-        if not cam: db.add(Camera(camera_name=name,location=loc,camera_role=role,camera_type="DEMO",status="ONLINE"))
-        elif cam.camera_role is None: cam.camera_role=role
+        if not cam:
+            db.add(Camera(camera_name=name,location=loc,camera_role=role,camera_type="DEMO",status=CameraStatus.UNKNOWN))
+        else:
+            if cam.camera_role is None:
+                cam.camera_role=role
+            if not cam.stream_url and cam.status == CameraStatus.ONLINE:
+                cam.status=CameraStatus.UNKNOWN
     db.commit()

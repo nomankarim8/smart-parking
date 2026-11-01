@@ -37,6 +37,7 @@ export default function CameraSidebar() {
   const [error, setError] = useState('');
   const [failedStreamId, setFailedStreamId] = useState<number | null>(null);
   const [streamVersion, setStreamVersion] = useState(0);
+  const [streamTicket, setStreamTicket] = useState<{ cameraId: number; ticket: string } | null>(null);
 
   const loadCameras = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
@@ -93,15 +94,37 @@ export default function CameraSidebar() {
   }, [cameras]);
   const selectedCamera = sorted.find((camera) => camera.camera_id === selectedId) ?? null;
   const onlineCount = cameras.filter((camera) => camera.status === 'ONLINE').length;
-  const token = localStorage.getItem('smart_parking_token') || '';
-  const canViewStream = !!selectedCamera && selectedCamera.status === 'ONLINE' && !!selectedCamera.stream_url && !!token;
+  useEffect(() => {
+    let active = true;
+    setStreamTicket(null);
+    if (!selectedCamera || selectedCamera.status !== 'ONLINE' || !selectedCamera.stream_url) return;
+    api.post<{ ticket: string }>(`/cameras/${selectedCamera.camera_id}/stream-ticket`)
+      .then(({ data }) => {
+        if (active) setStreamTicket({ cameraId: selectedCamera.camera_id, ticket: data.ticket });
+      })
+      .catch((requestError) => {
+        console.error('Camera stream ticket request failed', requestError);
+        if (active) setFailedStreamId(selectedCamera.camera_id);
+      });
+    return () => { active = false; };
+  }, [selectedCamera?.camera_id, selectedCamera?.status, selectedCamera?.stream_url]);
+  const canViewStream = !!selectedCamera && selectedCamera.status === 'ONLINE' && !!selectedCamera.stream_url && streamTicket?.cameraId === selectedCamera.camera_id;
   const streamUrl = selectedCamera && canViewStream
-    ? `${API_BASE}/cameras/${selectedCamera.camera_id}/stream?token=${encodeURIComponent(token)}&v=${streamVersion}`
+    ? `${API_BASE}/cameras/${selectedCamera.camera_id}/stream?ticket=${encodeURIComponent(streamTicket.ticket)}&v=${streamVersion}`
     : '';
   const streamFailed = !!selectedCamera && failedStreamId === selectedCamera.camera_id;
 
-  const refreshStream = () => {
+  const refreshStream = async () => {
     setFailedStreamId(null);
+    if (!selectedCamera) return;
+    try {
+      const { data } = await api.post<{ ticket: string }>(`/cameras/${selectedCamera.camera_id}/stream-ticket`);
+      setStreamTicket({ cameraId: selectedCamera.camera_id, ticket: data.ticket });
+    } catch (requestError) {
+      console.error('Camera stream ticket refresh failed', requestError);
+      setFailedStreamId(selectedCamera.camera_id);
+      return;
+    }
     setStreamVersion((version) => version + 1);
   };
 
