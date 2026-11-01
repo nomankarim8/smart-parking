@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { KeyRound, LogOut, ShieldCheck } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function PasswordRotation() {
   const { changePassword, logout, user } = useAuth();
@@ -29,7 +30,8 @@ export default function PasswordRotation() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 px-4 py-10 text-white">
+    <main className="relative grid min-h-screen place-items-center bg-slate-950 px-4 py-16 text-white">
+      <div className="absolute right-4 top-4 sm:right-6 sm:top-6"><ThemeToggle /></div>
       <section className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900/80 p-7 shadow-2xl sm:p-9">
         <div className="mb-6 grid h-12 w-12 place-items-center rounded-2xl bg-amber-400/10 text-amber-200">
           <KeyRound />

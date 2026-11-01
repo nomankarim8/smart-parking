@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Activity,
   Bell,
   CarFront,
   ChevronLeft,
@@ -173,7 +172,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           <button type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="app-quiet-button grid h-10 w-10 place-items-center rounded-xl lg:hidden">
             <LogOut size={17} />
           </button>
-          <Activity className="hidden text-primary xl:block" size={18} aria-hidden="true" />
         </div>
       </header>
 
