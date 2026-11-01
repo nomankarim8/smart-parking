@@ -29,11 +29,8 @@ try {
             }
         }
 
-        $backupDirectoryExisted = Test-Path -LiteralPath $resolvedBackupDirectory -PathType Container
         New-Item -ItemType Directory -Path $resolvedBackupDirectory -Force | Out-Null
-        if (-not $backupDirectoryExisted) {
-            Protect-SmartParkingBackupDirectory -Path $resolvedBackupDirectory
-        }
+        Protect-SmartParkingBackupDirectory -Path $resolvedBackupDirectory
         $timestamp = [DateTime]::UtcNow.ToString('yyyyMMdd_HHmmss')
         $backupPath = Join-Path $resolvedBackupDirectory "$($db['DB_NAME'])_$timestamp.sql"
         & $tools.Dump "--defaults-extra-file=$($credential.Path)" --single-transaction --routines --triggers --events --databases $db['DB_NAME'] "--result-file=$backupPath"
