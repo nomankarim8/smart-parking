@@ -137,6 +137,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   box-shadow: 0 1px 3px rgb(0 0 0 / .12);
 }
 
+.app-content h1 {
+  color: var(--foreground);
+  font-size: clamp(1.7rem, 2.4vw, 2.25rem);
+  letter-spacing: -.035em;
+  line-height: 1.15;
+}
+.app-content h2 { color: var(--foreground); letter-spacing: -.02em; }
+.app-content h3 { color: var(--foreground); letter-spacing: -.01em; }
+.app-content input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.app-content select,
+.app-content textarea {
+  min-height: 2.75rem;
+  border-radius: .75rem;
+}
+.app-content table { border-collapse: separate; border-spacing: 0; }
+.app-content thead { color: var(--muted); }
+.app-content th { font-weight: 700; }
+
 .glass {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -154,8 +172,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 [class~="text-indigo-200"],
 [class~="text-indigo-300"] { color: var(--primary); }
+[class~="text-cyan-200"],
+[class~="text-cyan-300"] { color: var(--primary); }
 [class~="text-sky-200"],
 [class~="text-sky-300"] { color: var(--secondary); }
+[class~="text-emerald-200"],
+[class~="text-emerald-300"],
+[class~="text-green-300"] { color: var(--success); }
+[class~="text-amber-200"],
+[class~="text-amber-300"],
+[class~="text-yellow-300"] { color: var(--warning); }
+[class~="text-rose-200"],
+[class~="text-rose-300"],
+[class~="text-red-300"] { color: var(--danger); }
+[class~="text-blue-200"],
+[class~="text-blue-300"] { color: var(--info); }
 [class~="bg-indigo-500/5"],
 [class~="bg-indigo-500/10"],
 [class~="bg-indigo-500/15"],

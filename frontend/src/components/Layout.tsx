@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -68,6 +68,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarState);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const allowedNav = nav.filter(item => !item.roles || item.roles.includes(user?.role ?? ''));
@@ -77,6 +79,33 @@ export default function Layout({ children }: { children: ReactNode }) {
   const sidebarWidth = sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64';
 
   useEffect(() => setMobileMenuOpen(false), [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const focusable = () => drawerRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not(:disabled)',
+    );
+    focusable()?.[0]?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (!items?.length) return;
+      if (event.shiftKey && document.activeElement === items[0]) {
+        event.preventDefault();
+        items[items.length - 1].focus();
+      } else if (!event.shiftKey && document.activeElement === items[items.length - 1]) {
+        event.preventDefault();
+        items[0].focus();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(value => {
@@ -93,6 +122,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   const signOut = () => {
     logout();
     navigate('/login', { replace: true });
+  };
+
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+    window.requestAnimationFrame(() => menuButtonRef.current?.focus());
   };
 
   const navigation = (compact = false) => (
@@ -161,9 +195,11 @@ export default function Layout({ children }: { children: ReactNode }) {
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
+            ref={menuButtonRef}
             className="app-quiet-button grid h-10 w-10 shrink-0 place-items-center rounded-xl lg:hidden"
             aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
             onClick={() => setMobileMenuOpen(value => !value)}
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -187,14 +223,14 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" aria-label="Close navigation menu" className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
-          <aside role="dialog" aria-modal="true" aria-label="Main navigation" className="app-mobile-drawer absolute inset-y-0 left-0 flex w-[min(19rem,88vw)] flex-col border-r p-4 shadow-2xl">
+          <button type="button" aria-label="Close navigation menu" className="absolute inset-0 bg-black/50" onClick={closeMobileMenu} />
+          <aside id="mobile-navigation" ref={drawerRef} role="dialog" aria-modal="true" aria-label="Main navigation" className="app-mobile-drawer absolute inset-y-0 left-0 flex w-[min(19rem,88vw)] flex-col border-r p-4 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="app-brand-mark grid h-10 w-10 place-items-center rounded-xl"><ParkingSquare size={21} /></div>
                 <div><div className="text-sm font-extrabold">SMART PARKING</div><div className="text-[10px] uppercase tracking-wider text-muted">Operations</div></div>
               </div>
-              <button type="button" aria-label="Close navigation menu" className="app-quiet-button grid h-10 w-10 place-items-center rounded-xl" onClick={() => setMobileMenuOpen(false)}><X size={19} /></button>
+              <button type="button" aria-label="Close navigation menu" className="app-quiet-button grid h-10 w-10 place-items-center rounded-xl" onClick={closeMobileMenu}><X size={19} /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">{navigation()}</div>
             <div className="mt-4 border-t pt-4">
