@@ -61,7 +61,7 @@ export default function Dashboard() {
   }));
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 xl:flex-row">
+    <div className="flex min-h-screen flex-col bg-slate-950 2xl:flex-row">
       <div className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
         <header className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
@@ -115,7 +115,7 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="mt-6 grid gap-5 xl:grid-cols-[1.6fr_.9fr]">
+        <div className="mt-6 grid gap-5 2xl:grid-cols-[1.6fr_.9fr]">
           <SlotGrid slots={slots} />
 
           <div className="glass rounded-2xl p-5">
