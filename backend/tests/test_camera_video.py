@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from jose import jwt
 
 from app.api.deps import current_user
 from app.api.v1.endpoints import alpr, cameras
@@ -150,5 +151,54 @@ def test_alpr_video_frames_can_be_recognized_without_persisting_images(monkeypat
         assert response.json()["normalized_plate"] == "DHAKA METRO GA 12-3456"
         assert response.json()["input_image_url"] is None
         assert list(tmp_path.glob("*")) == []
+
+    engine.dispose()
+
+
+def test_stream_requires_camera_scoped_short_lived_ticket(monkeypatch):
+    engine, session_factory, client = make_camera_client()
+    camera_id = seed_camera(session_factory)
+    with session_factory() as db:
+        camera = db.get(Camera, camera_id)
+        camera.status = CameraStatus.ONLINE
+        camera.stream_url = "demo-source"
+        db.commit()
+    monkeypatch.setattr(cameras.CameraStream, "frames", lambda _self: iter([b"frame"]))
+
+    with client:
+        ticket_response = client.post(f"/cameras/{camera_id}/stream-ticket")
+        assert ticket_response.status_code == 200
+        ticket = ticket_response.json()["ticket"]
+        claims = jwt.get_unverified_claims(ticket)
+        assert claims["scope"] == "camera:stream"
+        assert claims["camera_id"] == camera_id
+        assert claims["exp"] - claims["iat"] == 60
+
+        invalid = client.get(
+            f"/cameras/{camera_id + 1}/stream",
+            params={"ticket": ticket},
+        )
+        assert invalid.status_code == 401
+
+        stream = client.get(
+            f"/cameras/{camera_id}/stream",
+            params={"ticket": ticket},
+        )
+        assert stream.status_code == 200
+        assert b"frame" in stream.content
+
+    engine.dispose()
+
+
+def test_alpr_status_reports_missing_models_without_claiming_detection():
+    engine, _session_factory, client = make_camera_client()
+
+    with client:
+        response = client.get("/alpr/status")
+        assert response.status_code == 200
+        status = response.json()
+        assert status["vehicle_detection"] is False
+        assert status["plate_detector"]["status"] in {"MISSING", "LOAD_ERROR"}
+        assert status["automatic_plate_localization"] is False
 
     engine.dispose()
