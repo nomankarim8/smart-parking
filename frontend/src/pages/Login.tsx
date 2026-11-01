@@ -155,7 +155,7 @@ export default function Login() {
               </div>
 
               {error && (
-                <div role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm leading-5 text-rose-700 dark:text-rose-200">
+                <div role="alert" className="login-error rounded-xl px-4 py-3 text-sm leading-5">
                   {error}
                 </div>
               )}

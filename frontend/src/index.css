@@ -242,6 +242,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: var(--on-primary);
 }
 .login-primary:hover { background: var(--primary-hover); }
+.login-error {
+  border: 1px solid color-mix(in srgb, var(--danger) 36%, transparent);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: var(--danger);
+}
 
 @media (max-width: 640px) {
   .app-content { min-height: calc(100vh - 4.25rem); }
