@@ -242,6 +242,7 @@ a[class~="bg-indigo-500"]:hover { background-color: var(--primary-hover); }
 }
 :root[data-theme="light"] input::placeholder,
 :root[data-theme="light"] textarea::placeholder { color: var(--muted); }
+:root[data-theme="light"] a[class~="bg-indigo-500"] { color: var(--on-primary); }
 :root[data-theme="light"] .glass { box-shadow: 0 8px 26px rgb(15 23 42 / .055); }
 
 .login-page {
