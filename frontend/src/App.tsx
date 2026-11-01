@@ -35,5 +35,5 @@ function Protected(){
 }
 
 export default function App(){
-  return <ThemeProvider><BrowserRouter><AuthProvider><Suspense fallback={<div className="grid min-h-screen place-items-center text-slate-500">Loading…</div>}><Routes><Route path="/login" element={<Login/>}/><Route path="/*" element={<Protected/>}/></Routes></Suspense></AuthProvider></BrowserRouter></ThemeProvider>;
+  return <BrowserRouter><AuthProvider><ThemeProvider><Suspense fallback={<div className="grid min-h-screen place-items-center text-slate-500">Loading…</div>}><Routes><Route path="/login" element={<Login/>}/><Route path="/*" element={<Protected/>}/></Routes></Suspense></ThemeProvider></AuthProvider></BrowserRouter>;
 }

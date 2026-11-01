@@ -1,10 +1,36 @@
-import { Moon, Sun } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { Monitor, Moon, Sun } from 'lucide-react';
+import { Theme, useTheme } from '../context/ThemeContext';
 
-export default function ThemeToggle(){
-  const {theme,toggleTheme}=useTheme();
-  const next=theme==='dark'?'light':'dark';
-  return <button type="button" onClick={toggleTheme} aria-pressed={theme==='light'} aria-label={`Switch to ${next} mode`} title={`Switch to ${next} mode`} className="theme-toggle inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-xs font-bold text-slate-300 transition hover:bg-slate-800">
-    {theme==='dark'?<Sun size={16}/>:<Moon size={16}/>}<span className="hidden sm:inline">{theme==='dark'?'Light mode':'Dark mode'}</span>
-  </button>;
+const modes: { value: Theme; label: string; Icon: typeof Sun }[] = [
+  { value: 'light', label: 'Light', Icon: Sun },
+  { value: 'dark', label: 'Dark', Icon: Moon },
+  { value: 'system', label: 'System', Icon: Monitor },
+];
+
+export default function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <div
+      className="theme-selector inline-flex items-center gap-0.5 rounded-xl border p-1"
+      role="group"
+      aria-label="Color theme"
+    >
+      {modes.map(({ value, label, Icon }) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => setTheme(value)}
+          aria-label={`${label} theme`}
+          aria-pressed={theme === value}
+          title={`${label} theme`}
+          className={`theme-option inline-flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold sm:min-h-10 ${
+            theme === value ? 'is-selected' : ''
+          }`}
+        >
+          <Icon size={15} aria-hidden="true" />
+          <span className="hidden xl:inline">{label}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
