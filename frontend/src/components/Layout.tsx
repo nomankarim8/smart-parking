@@ -8,6 +8,7 @@ import {
   CircleUserRound,
   ClipboardList,
   CreditCard,
+  ChevronDown,
   FileBarChart2,
   History,
   LayoutDashboard,
@@ -214,10 +215,20 @@ export default function Layout({ children }: { children: ReactNode }) {
             <Bell size={18} />
           </NavLink>
           <ThemeToggle />
-          <div className="hidden min-w-0 border-l pl-3 sm:block">
-            <div className="max-w-36 truncate text-sm font-semibold">{user?.name}</div>
-            <div className="text-xs text-muted">{user?.role}</div>
-          </div>
+          <details className="account-menu relative hidden border-l pl-3 xl:block">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg px-2">
+              <CircleUserRound size={20} className="shrink-0 text-muted" aria-hidden="true" />
+              <span className="min-w-0">
+                <span className="block max-w-36 truncate text-sm font-semibold">{user?.name}</span>
+                <span className="block text-xs text-muted">{user?.role}</span>
+              </span>
+              <ChevronDown size={15} className="text-muted" aria-hidden="true" />
+            </summary>
+            <div className="account-menu-panel absolute right-0 top-full z-50 mt-2 w-52 rounded-xl border p-2 shadow-xl">
+              <NavLink to="/settings" className="app-quiet-button block rounded-lg px-3 py-2.5 text-sm font-semibold">Account & settings</NavLink>
+              <button type="button" onClick={signOut} className="app-quiet-button flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold"><LogOut size={16} />Sign out</button>
+            </div>
+          </details>
         </div>
       </header>
 

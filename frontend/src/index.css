@@ -120,6 +120,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: var(--surface-secondary);
   color: var(--foreground);
 }
+.account-menu summary::-webkit-details-marker { display: none; }
+.account-menu[open] summary { background: var(--surface-secondary); }
+.account-menu-panel {
+  border-color: var(--border);
+  background: var(--surface);
+}
 .theme-selector {
   border-color: var(--border);
   background: var(--surface-secondary);
