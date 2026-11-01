@@ -53,13 +53,19 @@ const nav: NavItem[] = [
   { to: '/settings', label: 'Settings & pricing', Icon: Settings2 },
 ];
 
+function getInitialSidebarState() {
+  try {
+    return localStorage.getItem('smart_parking_sidebar_collapsed') === 'true';
+  } catch {
+    return false;
+  }
+}
+
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(
-    () => localStorage.getItem('smart_parking_sidebar_collapsed') === 'true',
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(getInitialSidebarState);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const allowedNav = nav.filter(item => !item.roles || item.roles.includes(user?.role ?? ''));
   const currentPage = allowedNav.find(item =>
@@ -72,7 +78,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   const toggleSidebar = () => {
     setSidebarCollapsed(value => {
       const next = !value;
-      localStorage.setItem('smart_parking_sidebar_collapsed', String(next));
+      try {
+        localStorage.setItem('smart_parking_sidebar_collapsed', String(next));
+      } catch {
+        // The sidebar still collapses for this session if storage is unavailable.
+      }
       return next;
     });
   };
@@ -161,7 +171,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <NavLink to="/notifications" aria-label="Notifications" title="Notifications" className="app-quiet-button grid h-10 w-10 place-items-center rounded-xl">
+          <NavLink to="/notifications" aria-label="Notifications" title="Notifications" className="app-quiet-button hidden h-10 w-10 place-items-center rounded-xl sm:grid">
             <Bell size={18} />
           </NavLink>
           <ThemeToggle />
@@ -169,9 +179,6 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div className="max-w-36 truncate text-sm font-semibold">{user?.name}</div>
             <div className="text-xs text-muted">{user?.role}</div>
           </div>
-          <button type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="app-quiet-button grid h-10 w-10 place-items-center rounded-xl lg:hidden">
-            <LogOut size={17} />
-          </button>
         </div>
       </header>
 

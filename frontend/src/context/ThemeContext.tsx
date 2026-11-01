@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 export type Theme = 'dark' | 'light' | 'system';
@@ -64,11 +64,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener('change', update);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyTheme(theme, systemDark);
   }, [theme, systemDark]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loading) return;
     const accountTheme = user
       ? getStoredTheme(`${USER_THEME_PREFIX}${user.id}`)
