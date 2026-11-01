@@ -23,6 +23,25 @@ University-level full-stack CSE project using FastAPI, MySQL, React + TypeScript
 - Docker Compose support
 - pytest-ready backend test structure
 
+## Frontend themes and responsive layout
+
+The React dashboard includes Light, Dark, and System appearance modes. The
+theme selector is available before login, in the authenticated header, in
+Settings, and on the required password-rotation screen. Guest and per-account
+preferences are kept separately in browser storage; System mode follows the
+operating-system color preference.
+
+The shared responsive shell provides a collapsible desktop sidebar and mobile
+navigation drawer. The design system uses teal/blue theme tokens, Inter and
+Hind Siliguri font requests with local fallbacks, and reduced-motion/focus
+styles. Current routes and feature boundaries are documented in
+[the frontend design system](docs/FRONTEND_DESIGN_SYSTEM.md); executed browser
+checks and limitations are listed in
+[the responsive verification report](docs/FRONTEND_RESPONSIVE_VERIFICATION.md).
+The UI redesign does not imply the existence of separate ROI-editor,
+camera-health, analytics, ALPR-review, registration, forgot-password, or
+backup-management routes; these remain dependent on future feature work.
+
 ## Quick start on Windows 
 
 1. Start MySQL/XAMPP.
