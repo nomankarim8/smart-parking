@@ -6,16 +6,18 @@ from app.core.database import get_db
 from app.models.all_models import ParkingSlot,SlotStatus,ParkingRecord,ParkingStatus,Payment,PaymentStatus,VehicleCategory,Notification
 from app.api.deps import current_user
 from app.services.reservations import expire_reservations
+from app.services.reporting import reporting_window
 router=APIRouter()
 @router.get("/stats")
-def stats(db:Session=Depends(get_db),_=Depends(current_user)):
+def stats(start_date:date|None=None,end_date:date|None=None,db:Session=Depends(get_db),_=Depends(current_user)):
     expire_reservations(db)
     db.commit()
-    total=db.query(ParkingSlot).count(); available=db.query(ParkingSlot).filter_by(status=SlotStatus.AVAILABLE).count(); occupied=db.query(ParkingSlot).filter_by(status=SlotStatus.OCCUPIED).count(); reserved=db.query(ParkingSlot).filter_by(status=SlotStatus.RESERVED).count(); today_start=datetime.combine(date.today(),datetime.min.time()); vehicles_today=db.query(ParkingRecord).filter(ParkingRecord.entry_time>=today_start).count(); parked=db.query(ParkingRecord).filter_by(status=ParkingStatus.PARKED).count(); revenue=db.query(func.coalesce(func.sum(Payment.net_amount),0)).filter(Payment.payment_status==PaymentStatus.PAID,Payment.payment_time>=today_start).scalar(); unread_notifications=db.query(Notification).filter_by(is_read=False).count(); payments_due=db.query(Payment).filter(Payment.payment_status.in_([PaymentStatus.PENDING,PaymentStatus.FAILED])).count()
+    range_start,range_end,utc_start,utc_end=reporting_window(start_date,end_date)
+    total=db.query(ParkingSlot).count(); available=db.query(ParkingSlot).filter_by(status=SlotStatus.AVAILABLE).count(); occupied=db.query(ParkingSlot).filter_by(status=SlotStatus.OCCUPIED).count(); reserved=db.query(ParkingSlot).filter_by(status=SlotStatus.RESERVED).count(); vehicles_today=db.query(ParkingRecord).filter(ParkingRecord.entry_time>=utc_start,ParkingRecord.entry_time<utc_end).count(); exited=db.query(ParkingRecord).filter(ParkingRecord.exit_time>=utc_start,ParkingRecord.exit_time<utc_end).count(); parked=db.query(ParkingRecord).filter_by(status=ParkingStatus.PARKED).count(); revenue=db.query(func.coalesce(func.sum(Payment.net_amount),0)).filter(Payment.payment_status==PaymentStatus.PAID,Payment.payment_time>=utc_start,Payment.payment_time<utc_end).scalar(); unread_notifications=db.query(Notification).filter_by(is_read=False).count(); payments_due=db.query(Payment).filter(Payment.payment_status.in_([PaymentStatus.PENDING,PaymentStatus.FAILED])).count()
     cats=db.query(VehicleCategory).all(); breakdown=[]
     for c in cats:
-        breakdown.append({"category":c.category_name,"count":db.query(ParkingRecord).join(ParkingRecord.vehicle).filter(ParkingRecord.entry_time>=today_start,ParkingRecord.vehicle.has(category_id=c.category_id)).count()})
-    return {"total_slots":total,"available_slots":available,"occupied_slots":occupied,"reserved_slots":reserved,"today_vehicles":vehicles_today,"currently_parked":parked,"today_revenue":float(revenue or 0),"occupancy":round((occupied/total*100) if total else 0,1),"category_breakdown":breakdown,"unread_notifications":unread_notifications,"payments_due":payments_due}
+        breakdown.append({"category":c.category_name,"count":db.query(ParkingRecord).join(ParkingRecord.vehicle).filter(ParkingRecord.entry_time>=utc_start,ParkingRecord.entry_time<utc_end,ParkingRecord.vehicle.has(category_id=c.category_id)).count()})
+    return {"total_slots":total,"available_slots":available,"occupied_slots":occupied,"reserved_slots":reserved,"today_vehicles":vehicles_today,"vehicles_entered":vehicles_today,"vehicles_exited":exited,"range_start":range_start.isoformat(),"range_end":range_end.isoformat(),"currently_parked":parked,"today_revenue":float(revenue or 0),"range_revenue":float(revenue or 0),"occupancy":round((occupied/total*100) if total else 0,1),"category_breakdown":breakdown,"unread_notifications":unread_notifications,"payments_due":payments_due}
 
 @router.get("/forecast")
 def forecast(hours:int=24,db:Session=Depends(get_db),_=Depends(current_user)):
