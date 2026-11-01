@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     PLATE_MODEL_PATH: str = "../ai-models/plate_yolo.pt"
     VEHICLE_MODEL_PATH: str = "../ai-models/vehicle_yolo.pt"
     ALPR_CONFIDENCE_THRESHOLD: float = 0.80
+    BUSINESS_TIMEZONE: str = "Asia/Dhaka"
     TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     BENGALI_OCR_ENABLED: bool = True
     PAYMENT_MODE: str = "sandbox"
