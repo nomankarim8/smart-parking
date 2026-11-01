@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 
 const Login=lazy(()=>import('./pages/Login'));
+const PasswordRotation=lazy(()=>import('./pages/PasswordRotation'));
 const Dashboard=lazy(()=>import('./pages/Dashboard'));
 const Entry=lazy(()=>import('./pages/Entry'));
 const Exit=lazy(()=>import('./pages/Exit'));
@@ -27,6 +28,7 @@ function Protected(){
   const {user,loading}=useAuth();
   if(loading)return <div className="grid min-h-screen place-items-center text-slate-500">Loading…</div>;
   if(!user)return <Navigate to="/login" replace/>;
+  if(user.must_change_password)return <PasswordRotation/>;
   return <Layout><Suspense fallback={<div className="grid min-h-[50vh] place-items-center text-slate-500">Loading page…</div>}><Routes>
     <Route path="/" element={<Dashboard/>}/><Route path="/entry" element={<Entry/>}/><Route path="/exit" element={<Exit/>}/><Route path="/vehicles" element={<Vehicles/>}/><Route path="/slots" element={<Slots/>}/><Route path="/reservations" element={<Reservations/>}/><Route path="/notifications" element={<Notifications/>}/><Route path="/sensors" element={<Sensors/>}/><Route path="/payments" element={<Payments/>}/><Route path="/payment-result" element={<PaymentResult/>}/><Route path="/audit" element={<Audit/>}/><Route path="/history" element={<History/>}/><Route path="/blacklist" element={<Blacklist/>}/><Route path="/cameras" element={<Cameras/>}/><Route path="/monitor" element={<Monitor/>}/><Route path="/reports" element={<Reports/>}/><Route path="/settings" element={<Settings/>}/>
   </Routes></Suspense></Layout>;

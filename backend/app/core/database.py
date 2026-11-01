@@ -13,9 +13,35 @@ def get_db():
     try: yield db
     finally: db.close()
 
+def migrate_admin_password_rotation(bind=engine):
+    inspector = inspect(bind)
+    if not inspector.has_table("users"):
+        return
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    rotation_columns = {
+        "must_change_password": "BOOLEAN NOT NULL DEFAULT 0",
+        "password_changed_at": "DATETIME NULL",
+        "password_version": "INTEGER NOT NULL DEFAULT 0",
+    }
+    added_rotation_flag = "must_change_password" not in user_columns
+    for name, definition in rotation_columns.items():
+        if name not in user_columns:
+            with bind.begin() as connection:
+                connection.execute(
+                    text(f"ALTER TABLE users ADD COLUMN {name} {definition}")
+                )
+    if added_rotation_flag and inspector.has_table("roles"):
+        with bind.begin() as connection:
+            connection.execute(text(
+                "UPDATE users SET must_change_password=1 "
+                "WHERE role_id IN (SELECT role_id FROM roles "
+                "WHERE role_name IN ('SUPER_ADMIN','ADMIN'))"
+            ))
+
 def init_db():
     from app.models import all_models # noqa
     Base.metadata.create_all(bind=engine)
+    migrate_admin_password_rotation(engine)
     inspector = inspect(engine)
     if inspector.has_table("cameras") and "camera_role" not in {column["name"] for column in inspector.get_columns("cameras")}:
         if engine.dialect.name not in {"mysql", "mariadb"}:

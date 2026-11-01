@@ -5,8 +5,9 @@ from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import current_user, require_roles
 from app.core.config import settings
@@ -20,6 +21,7 @@ from app.models.all_models import (
     PaymentMethod,
     PaymentStatus,
     SlotStatus,
+    WalletPaymentSubmission,
 )
 from app.services.activity import create_notification, record_activity
 from app.services.payment_gateways import (
@@ -49,6 +51,23 @@ class DemoOutcome(str, Enum):
 
 class DemoPaymentIn(BaseModel):
     outcome: DemoOutcome = DemoOutcome.APPROVED
+
+
+class PersonalWalletMethod(str, Enum):
+    BKASH_PERSONAL = "BKASH_PERSONAL"
+    NAGAD_PERSONAL = "NAGAD_PERSONAL"
+
+
+class WalletSubmissionIn(BaseModel):
+    method: PersonalWalletMethod
+    transaction_id: str = Field(min_length=4, max_length=120)
+    amount: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
+    payer_wallet_masked: str | None = Field(default=None, min_length=5, max_length=32)
+
+
+class WalletReviewIn(BaseModel):
+    decision: str = Field(pattern="^(VERIFIED|REJECTED)$")
+    note: str = Field(min_length=3, max_length=500)
 
 
 def _complete_paid_parking_session(db: Session, payment: Payment) -> None:
@@ -223,8 +242,189 @@ def payment_configuration(_=Depends(current_user)):
             for provider in ("BKASH", "NAGAD")
         },
         "demo_enabled": settings.PAYMENT_DEMO_ENABLED,
+        "personal_wallets": {
+            "BKASH_PERSONAL": {
+                "configured": bool(settings.BKASH_PERSONAL_NUMBER),
+                "receiver_number": settings.BKASH_PERSONAL_NUMBER or None,
+            },
+            "NAGAD_PERSONAL": {
+                "configured": bool(settings.NAGAD_PERSONAL_NUMBER),
+                "receiver_number": settings.NAGAD_PERSONAL_NUMBER or None,
+            },
+        },
     }
 
+@router.post("/personal-wallet/{record_id}/submit", status_code=201)
+def submit_personal_wallet_payment(
+    record_id: int,
+    payload: WalletSubmissionIn,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles("SUPER_ADMIN", "ADMIN", "OPERATOR")),
+):
+    payment = (
+        db.query(Payment)
+        .filter_by(record_id=record_id)
+        .with_for_update()
+        .first()
+    )
+    if not payment:
+        raise HTTPException(404, "Payment is not due for this parking record")
+    if payment.payment_status not in (PaymentStatus.PENDING, PaymentStatus.FAILED):
+        raise HTTPException(409, "Payment is not awaiting verification")
+    if payment.record.status != ParkingStatus.PARKED or payment.record.exit_time is None:
+        raise HTTPException(409, "Parking session is not awaiting exit payment")
+    if Decimal(str(payment.net_amount)) != payload.amount:
+        raise HTTPException(422, "Submitted amount must exactly match the server-calculated amount due")
+    pending_submission = (
+        db.query(WalletPaymentSubmission.submission_id)
+        .filter_by(payment_id=payment.payment_id, status="PENDING_VERIFICATION")
+        .first()
+    )
+    if pending_submission:
+        raise HTTPException(409, "A wallet transaction is already waiting for verification")
+
+    method = payload.method.value
+    receiver = (
+        settings.BKASH_PERSONAL_NUMBER
+        if method == PersonalWalletMethod.BKASH_PERSONAL.value
+        else settings.NAGAD_PERSONAL_NUMBER
+    )
+    if not receiver:
+        raise HTTPException(503, f"{method} receiving number is not configured")
+    transaction_id = payload.transaction_id.strip()
+    if not transaction_id or not any(character.isalnum() for character in transaction_id):
+        raise HTTPException(422, "A valid wallet transaction ID is required")
+    if payload.payer_wallet_masked and not (
+        "*" in payload.payer_wallet_masked and len(payload.payer_wallet_masked) >= 5
+    ):
+        raise HTTPException(422, "Payer wallet must be masked; do not submit a full wallet number")
+
+    submission = WalletPaymentSubmission(
+        payment_id=payment.payment_id,
+        method=method,
+        transaction_id=transaction_id,
+        submitted_amount=payload.amount,
+        payer_wallet_masked=payload.payer_wallet_masked,
+        status="PENDING_VERIFICATION",
+        submitted_by=user.user_id,
+    )
+    payment.payment_method = PaymentMethod.MOBILE_BANKING
+    db.add(submission)
+    record_activity(
+        db,
+        user.user_id,
+        "PERSONAL_WALLET_PAYMENT_SUBMITTED",
+        "PAYMENT",
+        payment.payment_id,
+        {"record_id": record_id, "method": method, "status": "PENDING_VERIFICATION"},
+    )
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "This wallet transaction ID has already been submitted") from exc
+    db.refresh(submission)
+    return {
+        "submission_id": submission.submission_id,
+        "record_id": record_id,
+        "method": submission.method,
+        "status": submission.status,
+        "transaction_id": submission.transaction_id,
+        "amount": float(submission.submitted_amount),
+        "message": "Payment is pending manual verification. The parking slot remains occupied.",
+    }
+
+@router.get("/personal-wallet/pending")
+def pending_wallet_payments(
+    db: Session = Depends(get_db),
+    _=Depends(require_roles("SUPER_ADMIN", "ADMIN")),
+):
+    rows = (
+        db.query(WalletPaymentSubmission)
+        .filter_by(status="PENDING_VERIFICATION")
+        .order_by(WalletPaymentSubmission.submitted_at.asc())
+        .limit(200)
+        .all()
+    )
+    return [
+        {
+            "submission_id": row.submission_id,
+            "record_id": row.payment.record_id,
+            "plate_number": row.payment.record.vehicle.plate_number,
+            "amount_due": float(row.payment.net_amount),
+            "submitted_amount": float(row.submitted_amount),
+            "method": row.method,
+            "transaction_id": row.transaction_id,
+            "payer_wallet_masked": row.payer_wallet_masked,
+            "status": row.status,
+            "submitted_at": row.submitted_at.isoformat(),
+        }
+        for row in rows
+    ]
+
+@router.post("/personal-wallet/submissions/{submission_id}/review")
+def review_wallet_payment(
+    submission_id: int,
+    payload: WalletReviewIn,
+    db: Session = Depends(get_db),
+    user=Depends(require_roles("SUPER_ADMIN", "ADMIN")),
+):
+    submission_ref = db.get(WalletPaymentSubmission, submission_id)
+    if not submission_ref:
+        raise HTTPException(404, "Wallet payment submission not found")
+    payment = (
+        db.query(Payment)
+        .filter_by(payment_id=submission_ref.payment_id)
+        .with_for_update()
+        .first()
+    )
+    submission = (
+        db.query(WalletPaymentSubmission)
+        .filter_by(submission_id=submission_id)
+        .with_for_update()
+        .first()
+    )
+    if not payment or not submission:
+        raise HTTPException(404, "Wallet payment or parking payment no longer exists")
+    if submission.status != "PENDING_VERIFICATION":
+        raise HTTPException(409, "Wallet submission has already been reviewed")
+    if Decimal(str(payment.net_amount)) != Decimal(str(submission.submitted_amount)):
+        raise HTTPException(409, "Submitted payment no longer matches the amount due")
+
+    submission.status = payload.decision
+    submission.verified_by = user.user_id
+    submission.verified_at = datetime.utcnow()
+    submission.verification_note = payload.note.strip()
+    if payload.decision == "VERIFIED":
+        if payment.payment_status not in (PaymentStatus.PENDING, PaymentStatus.FAILED):
+            raise HTTPException(409, "Parking payment is not awaiting verification")
+        payment.payment_status = PaymentStatus.PAID
+        payment.payment_method = PaymentMethod.MOBILE_BANKING
+        payment.payment_time = submission.verified_at
+        payment.transaction_reference = submission.transaction_id
+        _complete_paid_parking_session(db, payment)
+    record_activity(
+        db,
+        user.user_id,
+        f"PERSONAL_WALLET_PAYMENT_{payload.decision}",
+        "PAYMENT",
+        payment.payment_id,
+        {
+            "record_id": payment.record_id,
+            "method": submission.method,
+            "amount": str(submission.submitted_amount),
+            "transaction_id": submission.transaction_id,
+            "note": submission.verification_note,
+        },
+    )
+    db.commit()
+    return {
+        "submission_id": submission.submission_id,
+        "record_id": payment.record_id,
+        "status": submission.status,
+        "payment_status": payment.payment_status.value,
+        "receipt": receipt_data(payment) if payment.payment_status == PaymentStatus.PAID else None,
+    }
 
 @router.post("/{record_id}/checkout")
 def create_checkout(

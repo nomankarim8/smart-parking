@@ -16,10 +16,22 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR(120) NOT NULL,
   role_id INT NOT NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+  password_changed_at DATETIME NULL,
+  password_version INT NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE RESTRICT,
   INDEX idx_users_role (role_id), INDEX idx_users_active (is_active)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS password_history (
+  history_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_password_history_user FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  INDEX idx_password_history_user_created(user_id, created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS vehicle_categories (
@@ -138,6 +150,26 @@ CREATE TABLE IF NOT EXISTS payments (
   CONSTRAINT fk_payment_record FOREIGN KEY(record_id) REFERENCES parking_records(record_id),
   CONSTRAINT fk_payment_user FOREIGN KEY(created_by) REFERENCES users(user_id) ON DELETE SET NULL,
   INDEX idx_payment_time(payment_time), INDEX idx_payment_status(payment_status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS wallet_payment_submissions (
+  submission_id INT AUTO_INCREMENT PRIMARY KEY,
+  payment_id INT NOT NULL,
+  method VARCHAR(20) NOT NULL,
+  transaction_id VARCHAR(120) NOT NULL UNIQUE,
+  submitted_amount DECIMAL(10,2) NOT NULL,
+  payer_wallet_masked VARCHAR(32) NULL,
+  status VARCHAR(24) NOT NULL DEFAULT 'PENDING_VERIFICATION',
+  submitted_by INT NOT NULL,
+  submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  verified_by INT NULL,
+  verified_at DATETIME NULL,
+  verification_note VARCHAR(500) NULL,
+  CONSTRAINT fk_wallet_submission_payment FOREIGN KEY(payment_id) REFERENCES payments(payment_id) ON DELETE CASCADE,
+  CONSTRAINT fk_wallet_submission_actor FOREIGN KEY(submitted_by) REFERENCES users(user_id),
+  CONSTRAINT fk_wallet_submission_verifier FOREIGN KEY(verified_by) REFERENCES users(user_id) ON DELETE SET NULL,
+  INDEX idx_wallet_submission_queue(status, submitted_at),
+  INDEX idx_wallet_submission_payment(payment_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS blacklist (

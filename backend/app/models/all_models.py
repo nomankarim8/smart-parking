@@ -18,7 +18,7 @@ class Role(Base):
     role_id:Mapped[int]=mapped_column(primary_key=True); role_name:Mapped[str]=mapped_column(String(50),unique=True); description:Mapped[str|None]=mapped_column(String(255)); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
 class User(Base):
     __tablename__="users"
-    user_id:Mapped[int]=mapped_column(primary_key=True); username:Mapped[str]=mapped_column(String(50),unique=True,index=True); email:Mapped[str]=mapped_column(String(120),unique=True); password_hash:Mapped[str]=mapped_column(String(255)); full_name:Mapped[str]=mapped_column(String(120)); role_id:Mapped[int]=mapped_column(ForeignKey("roles.role_id")); is_active:Mapped[bool]=mapped_column(Boolean,default=True); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow); role=relationship("Role")
+    user_id:Mapped[int]=mapped_column(primary_key=True); username:Mapped[str]=mapped_column(String(50),unique=True,index=True); email:Mapped[str]=mapped_column(String(120),unique=True); password_hash:Mapped[str]=mapped_column(String(255)); full_name:Mapped[str]=mapped_column(String(120)); role_id:Mapped[int]=mapped_column(ForeignKey("roles.role_id")); is_active:Mapped[bool]=mapped_column(Boolean,default=True); must_change_password:Mapped[bool]=mapped_column(Boolean,default=False); password_changed_at:Mapped[datetime|None]=mapped_column(DateTime); password_version:Mapped[int]=mapped_column(Integer,default=0,nullable=False); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); updated_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,onupdate=datetime.utcnow); role=relationship("Role")
 class VehicleCategory(Base):
     __tablename__="vehicle_categories"
     category_id:Mapped[int]=mapped_column(primary_key=True); category_name:Mapped[str]=mapped_column(String(50),unique=True); description:Mapped[str|None]=mapped_column(String(255)); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
@@ -70,6 +70,21 @@ class PlateDetection(Base):
 class Payment(Base):
     __tablename__="payments"
     payment_id:Mapped[int]=mapped_column(primary_key=True); record_id:Mapped[int]=mapped_column(ForeignKey("parking_records.record_id"),unique=True); total_duration_minutes:Mapped[int]=mapped_column(Integer); gross_amount:Mapped[float]=mapped_column(Numeric(10,2)); discount_amount:Mapped[float]=mapped_column(Numeric(10,2),default=0); net_amount:Mapped[float]=mapped_column(Numeric(10,2)); payment_method:Mapped[PaymentMethod]=mapped_column(SAEnum(PaymentMethod)); payment_status:Mapped[PaymentStatus]=mapped_column(SAEnum(PaymentStatus),default=PaymentStatus.PENDING); transaction_reference:Mapped[str|None]=mapped_column(String(120)); payment_time:Mapped[datetime|None]=mapped_column(DateTime); created_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); record=relationship("ParkingRecord"); gateway_payments=relationship("GatewayPayment",back_populates="payment")
+class WalletPaymentSubmission(Base):
+    __tablename__="wallet_payment_submissions"
+    submission_id:Mapped[int]=mapped_column(primary_key=True)
+    payment_id:Mapped[int]=mapped_column(ForeignKey("payments.payment_id",ondelete="CASCADE"),index=True)
+    method:Mapped[str]=mapped_column(String(20),index=True)
+    transaction_id:Mapped[str]=mapped_column(String(120),unique=True)
+    submitted_amount:Mapped[float]=mapped_column(Numeric(10,2))
+    payer_wallet_masked:Mapped[str|None]=mapped_column(String(32))
+    status:Mapped[str]=mapped_column(String(24),default="PENDING_VERIFICATION",index=True)
+    submitted_by:Mapped[int]=mapped_column(ForeignKey("users.user_id"))
+    submitted_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+    verified_by:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL"))
+    verified_at:Mapped[datetime|None]=mapped_column(DateTime)
+    verification_note:Mapped[str|None]=mapped_column(String(500))
+    payment=relationship("Payment")
 class GatewayPayment(Base):
     __tablename__="gateway_payments"
     gateway_payment_id:Mapped[int]=mapped_column(primary_key=True)
@@ -92,6 +107,12 @@ class Notification(Base):
 class ActivityLog(Base):
     __tablename__="activity_logs"
     log_id:Mapped[int]=mapped_column(primary_key=True); user_id:Mapped[int|None]=mapped_column(ForeignKey("users.user_id",ondelete="SET NULL")); action:Mapped[str]=mapped_column(String(120)); entity_type:Mapped[str|None]=mapped_column(String(80)); entity_id:Mapped[int|None]=mapped_column(Integer); details:Mapped[dict|None]=mapped_column(JSON); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow); user=relationship("User")
+class PasswordHistory(Base):
+    __tablename__="password_history"
+    history_id:Mapped[int]=mapped_column(primary_key=True)
+    user_id:Mapped[int]=mapped_column(ForeignKey("users.user_id",ondelete="CASCADE"),index=True)
+    password_hash:Mapped[str]=mapped_column(String(255))
+    created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
 class SensorEvent(Base):
     __tablename__="sensor_events"
     event_id:Mapped[int]=mapped_column(primary_key=True)

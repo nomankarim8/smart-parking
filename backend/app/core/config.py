@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     DB_NAME: str = "smart_parking_db"
     SECRET_KEY: str = ""
     INITIAL_ADMIN_PASSWORD: str = ""
+    PASSWORD_MIN_LENGTH: int = 12
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     CORS_ORIGINS: list[str] = ["http://localhost:5173"]
@@ -18,6 +19,9 @@ class Settings(BaseSettings):
     PLATE_MODEL_PATH: str = "../ai-models/plate_yolo.pt"
     VEHICLE_MODEL_PATH: str = "../ai-models/vehicle_yolo.pt"
     ALPR_CONFIDENCE_THRESHOLD: float = 0.80
+    AI_DEVICE: str = "cpu"
+    ALPR_IMAGE_SIZE: int = 640
+    PDF_FONT_PATH: str = ""
     BUSINESS_TIMEZONE: str = "Asia/Dhaka"
     MEDIA_ROOT: str = "uploads"
     DEMO_VIDEO_ROOT: str = "../demo-videos"
@@ -27,6 +31,8 @@ class Settings(BaseSettings):
     TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     BENGALI_OCR_ENABLED: bool = True
     PAYMENT_MODE: str = "sandbox"
+    BKASH_PERSONAL_NUMBER: str = ""
+    NAGAD_PERSONAL_NUMBER: str = ""
     PAYMENT_CALLBACK_BASE_URL: str = ""
     PAYMENT_RETURN_URL: str = "http://localhost:5173/payment-result"
     PAYMENT_DEMO_ENABLED: bool = False
@@ -60,6 +66,12 @@ class Settings(BaseSettings):
             )
         if self.CAMERA_MAX_USB_INDEX < 0:
             raise RuntimeError("CAMERA_MAX_USB_INDEX must be zero or greater.")
+        if self.PASSWORD_MIN_LENGTH < 12:
+            raise RuntimeError("PASSWORD_MIN_LENGTH must be at least 12.")
+        if not 0 < self.ALPR_CONFIDENCE_THRESHOLD <= 1:
+            raise RuntimeError("ALPR_CONFIDENCE_THRESHOLD must be greater than zero and at most one.")
+        if self.ALPR_IMAGE_SIZE < 160:
+            raise RuntimeError("ALPR_IMAGE_SIZE must be at least 160 pixels.")
 
     @property
     def CAMERA_ALLOWED_HOST_SET(self) -> set[str]:

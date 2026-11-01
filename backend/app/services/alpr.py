@@ -1,6 +1,7 @@
 from io import BytesIO
 from importlib.util import find_spec
 from pathlib import Path
+from importlib.metadata import PackageNotFoundError, version
  
 import cv2
 import numpy as np
@@ -19,8 +20,10 @@ class ALPRService:
         self._ocr_attempted = False
         self._tesseract_available = False
         self._tesseract_error: str | None = None
+        self._tesseract_languages: list[str] = []
         self._easyocr_error: str | None = None
         self._detector_error: str | None = None
+        self._inference_error: str | None = None
         self.detector_name = "Manual verification"
 
         model_path = Path(settings.PLATE_MODEL_PATH)
@@ -37,6 +40,8 @@ class ALPRService:
             import pytesseract
             pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
             self._tesseract_available = bool(pytesseract.get_tesseract_version())
+            if self._tesseract_available:
+                self._tesseract_languages = pytesseract.get_languages(config="")
         except Exception as exc:
             self._tesseract_available = False
             self._tesseract_error = type(exc).__name__
@@ -62,15 +67,27 @@ class ALPRService:
             else "DISABLED" if not settings.OCR_ENABLED
             else "MISSING"
         )
+        try:
+            ultralytics_version = version("ultralytics")
+        except PackageNotFoundError:
+            ultralytics_version = None
+        plate_model_path = Path(settings.PLATE_MODEL_PATH)
+        vehicle_model_path = Path(settings.VEHICLE_MODEL_PATH)
         return {
             "plate_detector": {
                 "status": detector_status,
+                "readiness": "MODEL_READY" if self.detector is not None else "MODEL_MISSING" if not plate_model_exists else "LOAD_ERROR",
                 "configured": plate_model_exists,
+                "path": str(plate_model_path),
+                "format": plate_model_path.suffix.lower() or None,
+                "version": ultralytics_version,
                 "error_type": self._detector_error,
+                "inference_error_type": self._inference_error,
             },
             "vehicle_detector": {
-                "status": "NOT_INTEGRATED",
-                "configured": Path(settings.VEHICLE_MODEL_PATH).is_file(),
+                "status": "MODEL_MISSING" if not vehicle_model_path.is_file() else "CONFIGURED_NOT_LOADED",
+                "configured": vehicle_model_path.is_file(),
+                "path": str(vehicle_model_path),
                 "loaded": False,
             },
             "ocr": {
@@ -78,11 +95,22 @@ class ALPRService:
                 "tesseract": {
                     "status": "READY" if self._tesseract_available else "MISSING",
                     "enabled": settings.BENGALI_OCR_ENABLED,
+                    "path": settings.TESSERACT_CMD,
+                    "languages_available": self._tesseract_languages,
+                    "bengali_ready": "ben" in self._tesseract_languages,
+                    "english_ready": "eng" in self._tesseract_languages,
                     "error_type": self._tesseract_error,
                 },
             },
+            "inference": {
+                "device_configured": settings.AI_DEVICE,
+                "image_size": settings.ALPR_IMAGE_SIZE,
+                "confidence_threshold": settings.ALPR_CONFIDENCE_THRESHOLD,
+                "opencv_version": cv2.__version__,
+            },
             "automatic_plate_localization": self.detector is not None,
             "vehicle_detection": False,
+            "real_footage_verified": False,
         }
 
     def _decode(self, data: bytes) -> np.ndarray:
@@ -103,7 +131,13 @@ class ALPRService:
         if self.detector is None:
             return image, None
         try:
-            result = self.detector.predict(source=image, conf=0.35, verbose=False)[0]
+            result = self.detector.predict(
+                source=image,
+                conf=settings.ALPR_CONFIDENCE_THRESHOLD,
+                imgsz=settings.ALPR_IMAGE_SIZE,
+                device=settings.AI_DEVICE,
+                verbose=False,
+            )[0]
             if len(result.boxes) == 0:
                 return image, None 
             
@@ -114,7 +148,8 @@ class ALPRService:
             x1, y1 = max(0, min(x1, w - 1)), max(0, min(y1, h - 1))
             x2, y2 = max(x1 + 1, min(x2, w)), max(y1 + 1, min(y2, h))
             return image[y1:y2, x1:x2], [x1, y1, x2, y2]
-        except Exception:
+        except Exception as exc:
+            self._inference_error = type(exc).__name__
             return image, None
 
     def _preprocess_variants(self, image: np.ndarray):

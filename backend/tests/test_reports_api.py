@@ -1,3 +1,4 @@
+from io import BytesIO
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 
@@ -19,6 +20,7 @@ from app.models.all_models import (
     VehicleCategory,
 )
 from app.services.reporting import reporting_window
+from pypdf import PdfReader
 
 
 def make_reports_client():
@@ -88,6 +90,20 @@ def test_report_history_filters_and_paginates_server_side():
         assert data["page"] == 2
         assert len(data["items"]) == 1
         assert data["items"][0]["plate"] == "DHAKA METRO GA 12-3456"
+
+        pdf = client.get(
+            "/reports/history.pdf",
+            params={
+                "start_date": start.isoformat(),
+                "end_date": end.isoformat(),
+                "plate": "METRO GA",
+            },
+        )
+        assert pdf.status_code == 200
+        assert pdf.headers["content-type"] == "application/pdf"
+        reader = PdfReader(BytesIO(pdf.content))
+        assert len(reader.pages) >= 1
+        assert "Parking Session History" in (reader.pages[0].extract_text() or "")
 
         invalid = client.get("/reports/history", params={"payment_status": "UNKNOWN"})
         assert invalid.status_code == 422

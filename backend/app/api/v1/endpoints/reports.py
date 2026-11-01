@@ -9,6 +9,8 @@ from app.core.database import get_db
 from app.models.all_models import ParkingRecord,Payment,PaymentStatus,ParkingStatus,VehicleCategory,Vehicle,ParkingSlot
 from app.api.deps import current_user
 from app.services.reporting import reporting_window
+from app.services.reporting_pdf import build_parking_history_pdf
+from datetime import datetime
 router=APIRouter()
 
 def safe_csv_cell(value):
@@ -94,6 +96,54 @@ def csv_export(
     for r,payment_status in records:
         w.writerow([safe_csv_cell(v) for v in [r.record_id,r.vehicle.plate_number,r.vehicle.category.category_name,r.slot.slot_number,r.entry_time,r.exit_time or "",r.status.value,payment_status.value if payment_status else ""]])
     out.seek(0); return StreamingResponse(iter([out.getvalue()]),media_type="text/csv",headers={"Content-Disposition":"attachment; filename=parking_history.csv"})
+
+@router.get("/history.pdf")
+def pdf_export(
+    start_date:date|None=None,
+    end_date:date|None=None,
+    plate:str|None=Query(default=None,max_length=80),
+    category_id:int|None=Query(default=None,ge=1),
+    payment_status:str|None=None,
+    session_status:str|None=None,
+    db:Session=Depends(get_db),
+    _=Depends(current_user),
+):
+    range_start,range_end,query=history_query(db,start_date,end_date,plate,category_id,payment_status,session_status)
+    rows=query.add_columns(Payment.payment_status).order_by(ParkingRecord.record_id.desc()).limit(5000).all()
+    report_rows=[
+        {
+            "record_id":row.record_id,
+            "plate":row.vehicle.normalized_plate,
+            "category":row.vehicle.category.category_name,
+            "slot":row.slot.slot_number,
+            "entry_time":row.entry_time.isoformat(sep=" ",timespec="minutes"),
+            "exit_time":row.exit_time.isoformat(sep=" ",timespec="minutes") if row.exit_time else None,
+            "status":row.status.value,
+            "payment_status":payment_state.value if payment_state else None,
+        }
+        for row,payment_state in rows
+    ]
+    filters={
+        "plate":plate or "",
+        "category_id":str(category_id) if category_id is not None else "",
+        "payment_status":payment_status or "",
+        "session_status":session_status or "",
+    }
+    try:
+        pdf=build_parking_history_pdf(
+            rows=report_rows,
+            start_date=range_start.isoformat(),
+            end_date=range_end.isoformat(),
+            filters=filters,
+            generated_at=datetime.utcnow(),
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(500,"Configured PDF font could not be loaded") from exc
+    return StreamingResponse(
+        iter([pdf]),
+        media_type="application/pdf",
+        headers={"Content-Disposition":"attachment; filename=parking_session_history.pdf"},
+    )
 
 @router.get("/summary")
 def summary(start_date:date|None=None,end_date:date|None=None,db:Session=Depends(get_db),_=Depends(current_user)):
