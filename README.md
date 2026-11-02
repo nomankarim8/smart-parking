@@ -307,15 +307,15 @@ If PowerShell blocks activation, follow your Windows execution policy or invoke 
 Copy-Item .env.example .env
 ```
 
-Edit `backend/.env` with the database connection values expected by the current backend settings. Configure the initial administrator password using the bootstrap variable supported by the current code (the supplied project notes identify `INITIAL_ADMIN_PASSWORD`).
+Edit `backend/.env` with the database connection values expected by the current backend settings. Prefer the secure local administrator command below instead of storing an initial password in the environment file.
 
 **Security checklist before startup:**
 
-- Use a unique, strong administrator password.
+- Initialize the administrator with hidden terminal password entry.
 - Use a strong application signing secret where required.
 - Never commit `backend/.env`.
 - Never place database credentials, JWT secrets, camera passwords, or payment keys in frontend variables.
-- Change the initial administrator password after first sign-in if the application requires it.
+- The first administrator sign-in requires password rotation.
 
 ### 4 · Start the backend
 
@@ -796,6 +796,8 @@ For release readiness, separately verify database migrations, backup restoration
 | [`docs/INSTALLATION.md`](docs/INSTALLATION.md) | Installation instructions |
 | [`docs/USER_MANUAL.md`](docs/USER_MANUAL.md) | User-facing application guide |
 | [`docs/ALPR_MODEL_SETUP.md`](docs/ALPR_MODEL_SETUP.md) | ALPR model configuration |
+| [`docs/ADMIN_ACCOUNT_SETUP.md`](docs/ADMIN_ACCOUNT_SETUP.md) | Secure local administrator bootstrap and reset |
+| [`docs/ADMIN_PASSWORD_ROTATION.md`](docs/ADMIN_PASSWORD_ROTATION.md) | First-login rotation and token invalidation |
 | [`docs/BANGLA_ENGLISH_ALPR_SETUP.md`](docs/BANGLA_ENGLISH_ALPR_SETUP.md) | Bengali/English OCR setup |
 | [`docs/FRONTEND_DESIGN_SYSTEM.md`](docs/FRONTEND_DESIGN_SYSTEM.md) | Theme tokens and frontend design system |
 | [`docs/FRONTEND_RESPONSIVE_VERIFICATION.md`](docs/FRONTEND_RESPONSIVE_VERIFICATION.md) | Responsive checks and known limitations |

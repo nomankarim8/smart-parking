@@ -92,11 +92,24 @@ from `backend\requirements.txt`; this includes the IANA `tzdata` package.
 
 ## Initial administrator
 
-Before first startup, set a unique `INITIAL_ADMIN_PASSWORD` (at least 12
-characters) in `backend\.env`. The bootstrap process creates the initial
-administrator only when this value is configured. Do not copy a shared demo
-password into a deployment. Authenticated users can change their password at
-`POST /api/v1/auth/change-password`.
+Before first API startup, initialize the first administrator from `backend\`
+using hidden terminal password entry:
+
+```powershell
+.\venv\Scripts\python.exe admin_account.py bootstrap
+```
+
+To securely reset the password of an existing administrator without creating
+a second account:
+
+```powershell
+.\venv\Scripts\python.exe admin_account.py reset --username admin
+```
+
+Never pass a password as a command-line argument or commit `backend\.env`.
+The bootstrap-created account is forced to rotate its password on first
+sign-in. See `docs\ADMIN_ACCOUNT_SETUP.md` for password requirements and
+recovery behavior.
 
 ## Camera and model status
 
