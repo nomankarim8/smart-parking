@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-labelledby="title desc">
+  <title id="title">Smart AI-Based Vehicle Parking Management System</title>
+  <desc id="desc">A dark navy technology banner with a glowing teal roadway, a vehicle, camera detection frames, and parking slots.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#081321"/><stop offset="0.58" stop-color="#10243A"/><stop offset="1" stop-color="#0B1728"/></linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2DD4BF"/><stop offset="1" stop-color="#38BDF8"/></linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1D354C"/><stop offset="1" stop-color="#102238"/></linearGradient>
+    <radialGradient id="halo"><stop offset="0" stop-color="#2DD4BF" stop-opacity=".23"/><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#8AB7C8" stroke-opacity=".07" stroke-width="1"/></pattern>
+    <filter id="soft"><feGaussianBlur stdDeviation="12"/></filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#020817" flood-opacity=".38"/></filter>
+  </defs>
+  <rect width="1280" height="440" rx="28" fill="url(#bg)"/>
+  <rect width="1280" height="440" rx="28" fill="url(#grid)"/>
+  <circle cx="1020" cy="208" r="260" fill="url(#halo)"/>
+  <circle cx="1120" cy="80" r="110" fill="#38BDF8" opacity=".08" filter="url(#soft)"/>
+  <path d="M0 347 C240 300 450 398 690 341 S1080 280 1280 330" fill="none" stroke="#2DD4BF" stroke-opacity=".10" stroke-width="2"/>
+  <g transform="translate(68 56)">
+    <rect x="0" y="0" width="44" height="44" rx="13" fill="url(#glow)"/>
+    <path d="M9 26h26l-3-8a4 4 0 0 0-4-3H16a4 4 0 0 0-4 3l-3 8Zm3 0v7m20-7v7M15 33h18" fill="none" stroke="#062337" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="16" cy="29" r="2.1" fill="#062337"/><circle cx="29" cy="29" r="2.1" fill="#062337"/>
+    <text x="58" y="19" fill="#C8F7F0" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="2.4">SMART PARKING / ALPR</text>
+    <text x="58" y="38" fill="#8BA9BD" font-family="Inter,Arial,sans-serif" font-size="11" letter-spacing="1.3">INTELLIGENT PARKING OPERATIONS</text>
+  </g>
+  <g transform="translate(68 154)">
+    <text x="0" y="0" fill="#F4FAFF" font-family="Inter,Arial,sans-serif" font-size="43" font-weight="800">Park smarter.</text>
+    <text x="0" y="54" fill="#F4FAFF" font-family="Inter,Arial,sans-serif" font-size="43" font-weight="800">Manage <tspan fill="#2DD4BF">intelligently.</tspan></text>
+    <text x="2" y="98" fill="#A9C0D2" font-family="Inter,Arial,sans-serif" font-size="17">A full-stack CSE project for connected parking workflows,</text>
+    <text x="2" y="124" fill="#A9C0D2" font-family="Inter,Arial,sans-serif" font-size="17">camera-assisted recognition, and operational visibility.</text>
+    <g transform="translate(0 158)">
+      <rect x="0" y="0" width="125" height="34" rx="17" fill="#123D45" stroke="#2DD4BF" stroke-opacity=".55"/>
+      <text x="62.5" y="22" text-anchor="middle" fill="#B9FFF2" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700">FASTAPI</text>
+      <rect x="136" y="0" width="145" height="34" rx="17" fill="#142F51" stroke="#60A5FA" stroke-opacity=".55"/>
+      <text x="208.5" y="22" text-anchor="middle" fill="#C6DEFF" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700">REACT + TS</text>
+      <rect x="292" y="0" width="145" height="34" rx="17" fill="#27304B" stroke="#A78BFA" stroke-opacity=".55"/>
+      <text x="364.5" y="22" text-anchor="middle" fill="#DDD4FF" font-family="Inter,Arial,sans-serif" font-size="12" font-weight="700">OPENCV / OCR</text>
+    </g>
+  </g>
+  <!-- right-side system illustration -->
+  <g transform="translate(720 56)" filter="url(#shadow)">
+    <rect x="0" y="0" width="492" height="330" rx="22" fill="url(#panel)" stroke="#4B7187" stroke-opacity=".55"/>
+    <path d="M22 57H470" stroke="#628097" stroke-opacity=".3"/>
+    <circle cx="28" cy="29" r="5" fill="#FB7185"/><circle cx="46" cy="29" r="5" fill="#FBBF24"/><circle cx="64" cy="29" r="5" fill="#34D399"/>
+    <text x="90" y="34" fill="#BCD0DE" font-family="Inter,Arial,sans-serif" font-size="11" letter-spacing="1.5">CAMERA / ALPR DEMO PREVIEW</text>
+    <g transform="translate(28 80)">
+      <rect x="0" y="0" width="436" height="120" rx="13" fill="#0B1B2C" stroke="#36556D"/>
+      <path d="M15 92H420" stroke="#5D7890" stroke-dasharray="8 8" stroke-opacity=".5"/>
+      <path d="M28 20h380v76H28z" fill="none" stroke="#2DD4BF" stroke-opacity=".28" stroke-dasharray="5 5"/>
+      <g transform="translate(110 28)">
+        <path d="M10 48 21 20q3-8 12-8h92q9 0 13 9l12 27 10 9v17H0V58Z" fill="#1C5870" stroke="#5EEAD4" stroke-width="2"/>
+        <path d="m30 22-8 21h119l-9-21q-2-5-8-5H39q-6 0-9 5Z" fill="#A5E7EC" opacity=".65"/>
+        <path d="M54 26h47" stroke="#DFFBFF" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+        <rect x="56" y="53" width="55" height="14" rx="3" fill="#F8FAFC"/>
+        <text x="83.5" y="63.5" text-anchor="middle" fill="#0F2436" font-family="Arial,sans-serif" font-size="7.5" font-weight="700">DHAKA METRO</text>
+        <circle cx="34" cy="83" r="10" fill="#071321" stroke="#79B8C7" stroke-width="3"/><circle cx="134" cy="83" r="10" fill="#071321" stroke="#79B8C7" stroke-width="3"/>
+        <path d="M-8 5h22M-8 5v22M166 5h-22M166 5v22M-8 101h22M-8 101V79M166 101h-22M166 101V79" stroke="#2DD4BF" stroke-width="2.5" fill="none"/>
+      </g>
+      <rect x="298" y="13" width="112" height="24" rx="12" fill="#123C37" stroke="#2DD4BF" stroke-opacity=".65"/>
+      <circle cx="312" cy="25" r="4" fill="#34D399"/><text x="323" y="29" fill="#B9FFF2" font-family="Inter,Arial,sans-serif" font-size="10" font-weight="700">SAMPLE ALPR VIEW</text>
+    </g>
+    <g transform="translate(28 218)">
+      <rect x="0" y="0" width="132" height="82" rx="12" fill="#132E42" stroke="#3E647B"/>
+      <text x="14" y="22" fill="#91AFC1" font-family="Inter,Arial,sans-serif" font-size="10">PARKING SLOTS</text>
+      <text x="14" y="51" fill="#EAF7FC" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="800">24 <tspan fill="#2DD4BF" font-size="12">/ 32</tspan></text>
+      <text x="14" y="69" fill="#70DCCB" font-family="Inter,Arial,sans-serif" font-size="9">Illustrative metric</text>
+      <rect x="148" y="0" width="132" height="82" rx="12" fill="#132E42" stroke="#3E647B"/>
+      <text x="162" y="22" fill="#91AFC1" font-family="Inter,Arial,sans-serif" font-size="10">CAMERA STATUS</text>
+      <circle cx="171" cy="47" r="5" fill="#34D399"/><text x="184" y="51" fill="#EAF7FC" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700">ONLINE</text>
+      <text x="162" y="69" fill="#91AFC1" font-family="Inter,Arial,sans-serif" font-size="9">Connection state</text>
+      <rect x="296" y="0" width="140" height="82" rx="12" fill="#132E42" stroke="#3E647B"/>
+      <text x="310" y="22" fill="#91AFC1" font-family="Inter,Arial,sans-serif" font-size="10">ALPR WORKFLOW</text>
+      <path d="M312 48h18l6-8 8 16 8-8h69" stroke="#2DD4BF" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="310" y="69" fill="#91AFC1" font-family="Inter,Arial,sans-serif" font-size="9">OCR + review</text>
+    </g>
+  </g>
+  <text x="68" y="408" fill="#7291A7" font-family="Inter,Arial,sans-serif" font-size="10" letter-spacing="1.8">SMART PARKING SYSTEM • PROJECT DOCUMENTATION</text>
+  <text x="1210" y="408" text-anchor="end" fill="#7291A7" font-family="Inter,Arial,sans-serif" font-size="10" letter-spacing="1.8">TEAL / NAVY / INTELLIGENCE</text>
+</svg>
