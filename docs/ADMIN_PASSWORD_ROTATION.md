@@ -28,16 +28,17 @@ stored. Changing the password increments the account's password version,
 revoking previously issued access tokens. The successful rotation is
 timestamped and audit-logged.
 
-If no administrator can authenticate, use the existing protected database
-administration process to recover the account. Do not remove the user or
-manually clear `must_change_password`.
+If no administrator can authenticate, run the secure local reset command
+described in [administrator account setup](./ADMIN_ACCOUNT_SETUP.md). Do not
+remove the user or manually clear `must_change_password`.
 
 ## Configuration and verification
 
 `PASSWORD_MIN_LENGTH` defaults to 12 and cannot be configured below 12.
-Initial administrator creation still uses `INITIAL_ADMIN_PASSWORD` and does
-not use a shared default. The frontend routes flagged accounts directly to
-the password-change screen.
+Initial administrator creation can use the secure local CLI or a unique
+`INITIAL_ADMIN_PASSWORD` supplied through protected environment configuration;
+there is no shared application default. The frontend routes flagged accounts
+directly to the password-change screen.
 
 Run the isolated tests from `backend\`:
 
