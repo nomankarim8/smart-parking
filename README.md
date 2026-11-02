@@ -155,3 +155,4 @@ Do not run the same `ALTER TABLE` migration repeatedly. It is intended as a one-
 ## ALPR prerequisites
 
 For Bengali OCR on Windows, install Tesseract OCR with both `eng` and `ben` language data. A trained plate detector is also required for automatic localization of plates inside full vehicle images; place it at `ai-models/plate_yolo.pt`. Without a compatible trained model, the system still supports upload/manual verification but does not claim automatic plate localization.
+
