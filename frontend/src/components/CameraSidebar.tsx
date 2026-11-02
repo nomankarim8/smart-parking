@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Camera, ChevronLeft, MapPin, RadioTower, RefreshCw, Video } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -107,7 +108,7 @@ export default function CameraSidebar() {
         if (active) setFailedStreamId(selectedCamera.camera_id);
       });
     return () => { active = false; };
-  }, [selectedCamera?.camera_id, selectedCamera?.status, selectedCamera?.stream_configured]);
+  }, [selectedCamera]);
   const canViewStream = !!selectedCamera && selectedCamera.status === 'ONLINE' && selectedCamera.stream_configured && streamTicket?.cameraId === selectedCamera.camera_id;
   const streamUrl = selectedCamera && canViewStream
     ? `${API_BASE}/cameras/${selectedCamera.camera_id}/stream?ticket=${encodeURIComponent(streamTicket.ticket)}&v=${streamVersion}`

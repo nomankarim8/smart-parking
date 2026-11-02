@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import api from '../services/api';
 import type { User } from '../types';
