@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine, migrate_admin_password_rotation
 from app.core.security import hash_password, verify_password
 from app.models import all_models  # noqa: F401
@@ -14,8 +15,10 @@ from app.services.activity import record_activity
 
 
 def validate_password(password: str) -> None:
-    if len(password) < 12:
-        raise ValueError("Password must contain at least 12 characters.")
+    if len(password) < settings.PASSWORD_MIN_LENGTH:
+        raise ValueError(
+            f"Password must contain at least {settings.PASSWORD_MIN_LENGTH} characters."
+        )
     if not any(char.islower() for char in password):
         raise ValueError("Password must include a lower-case letter.")
     if not any(char.isupper() for char in password):
