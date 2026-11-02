@@ -75,9 +75,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       ? getStoredTheme(`${USER_THEME_PREFIX}${user.id}`)
       : null;
     setThemeState(accountTheme ?? getStoredTheme(GUEST_THEME_KEY) ?? 'system');
-  }, [loading, user?.id]);
+  }, [loading, user]);
 
-  const setTheme = (nextTheme: Theme) => {
+  const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
     if (loading) return;
     const key = user ? `${USER_THEME_PREFIX}${user.id}` : GUEST_THEME_KEY;
@@ -89,10 +89,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } catch {
       // Theme selection still applies for the current page when storage is unavailable.
     }
-  };
+  }, [loading, user]);
 
-  const value = useMemo(() => ({ theme, setTheme }), [theme, user?.id, loading]);
+  const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeContext);
+// eslint-disable-next-line react-refresh/only-export-components
