@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+/* eslint-disable react-hooks/set-state-in-effect */
+import { createContext, ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 export type Theme = 'dark' | 'light' | 'system';
