@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Camera, CircleDot, Edit3, MapPin, Plus, Save, Trash2, UploadCloud, Video, X } from 'lucide-react';
+import { CircleDot, Edit3, MapPin, Plus, Save, Trash2, UploadCloud, Video, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
  
@@ -68,14 +68,14 @@ export default function Cameras() {
       const res = await api.get<CameraItem[]>('/cameras/');
       setCameras(res.data);
       setVideoCameraId((current) => current || String(res.data[0]?.camera_id ?? ''));
-    } catch (error) {
+    } catch {
       setMessage('Unable to load camera configuration.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchCameras(); }, []);
+  useEffect(() => { void fetchCameras(); }, []);
 
   const summary = useMemo(() => ({
     total: cameras.length,
@@ -127,8 +127,8 @@ export default function Cameras() {
       }
       resetForm();
       await fetchCameras();
-    } catch (error: any) {
-      setMessage(error?.response?.data?.detail || 'Camera operation failed.');
+    } catch (error: unknown) {
+      setMessage(errorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -141,8 +141,8 @@ export default function Cameras() {
       setMessage('Camera deleted successfully.');
       if (editing === camera.camera_id) resetForm();
       await fetchCameras();
-    } catch (error: any) {
-      setMessage(error?.response?.data?.detail || 'Unable to delete camera.');
+    } catch (error: unknown) {
+      setMessage(errorMessage(error));
     }
   };
 

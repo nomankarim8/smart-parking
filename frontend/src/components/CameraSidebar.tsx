@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Camera, ChevronLeft, MapPin, RadioTower, RefreshCw, Video } from 'lucide-react';
 import { Link } from 'react-router-dom';

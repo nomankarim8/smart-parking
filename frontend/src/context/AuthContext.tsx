@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect, react-refresh/only-export-components */
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import api from '../services/api';
 import type { User } from '../types';
