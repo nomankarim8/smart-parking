@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime
 from getpass import getpass
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -175,8 +176,13 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    Base.metadata.create_all(bind=engine)
-    migrate_admin_password_rotation(engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        migrate_admin_password_rotation(engine)
+    except SQLAlchemyError as exc:
+        raise RuntimeError(
+            f"Database initialization failed ({type(exc).__name__}); check the local database service and configuration."
+        ) from None
     password = _prompt_password()
     try:
         with SessionLocal() as db:
@@ -191,12 +197,12 @@ def main() -> None:
                     require_rotation=args.require_rotation,
                 )
                 print(f"Password reset for administrator {user.username!r}; existing tokens are revoked.")
-    except Exception:
-        if args.command == "bootstrap":
-            action = "Administrator initialization"
-        else:
-            action = "Administrator password reset"
-        raise RuntimeError(f"{action} failed; no credentials were printed or changed.") from None
+    except ValueError as exc:
+        parser.exit(2, f"error: {exc}\n")
+    except SQLAlchemyError as exc:
+        raise RuntimeError(
+            f"Administrator account operation failed ({type(exc).__name__}); check the local database service and configuration."
+        ) from None
 
 
 if __name__ == "__main__":
