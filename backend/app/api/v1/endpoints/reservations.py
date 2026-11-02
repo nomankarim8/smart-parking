@@ -18,6 +18,7 @@ from app.models.all_models import (
 )
 from app.schemas.models import ReservationCheckIn, ReservationIn
 from app.services.plate import normalize
+from app.services.blacklist import active_blacklist_entry
 from app.services.reservations import expire_reservations
 from app.services.activity import create_notification, record_activity
 from app.services.sms import (
@@ -76,6 +77,8 @@ def create_reservation(
         raise HTTPException(404, "Vehicle category not found")
 
     plate = normalize(payload.plate_number)
+    if active_blacklist_entry(db, plate):
+        raise HTTPException(409, "Vehicle is on the active blacklist and cannot be reserved")
     try:
         mobile_number = normalize_mobile_number(payload.mobile_number)
     except ValueError as exc:
@@ -182,6 +185,31 @@ def check_in_reservation(
     if not slot or slot.status != SlotStatus.RESERVED:
         raise HTTPException(409, "Reserved parking slot is no longer available")
     vehicle = reservation.vehicle
+    blacklist_entry = active_blacklist_entry(db, vehicle.normalized_plate)
+    if blacklist_entry:
+        slot.status = SlotStatus.AVAILABLE
+        reservation.status = "CANCELLED"
+        create_notification(
+            db,
+            "Blacklisted Reservation Check-in Blocked",
+            f"Check-in was denied for blacklisted plate {vehicle.plate_number}.",
+            "CRITICAL",
+            user.user_id,
+        )
+        record_activity(
+            db,
+            user.user_id,
+            "BLACKLIST_RESERVATION_CHECKIN_BLOCKED",
+            "BLACKLIST",
+            blacklist_entry.blacklist_id,
+            {
+                "plate_number": vehicle.normalized_plate,
+                "reservation_id": reservation.reservation_id,
+                "outcome": "BLOCKED",
+            },
+        )
+        db.commit()
+        raise HTTPException(409, "Vehicle is on the active blacklist; reservation check-in is denied.")
     active_record = db.query(ParkingRecord).filter_by(
         vehicle_id=vehicle.vehicle_id, status=ParkingStatus.PARKED
     ).first()

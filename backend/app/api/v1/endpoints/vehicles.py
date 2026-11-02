@@ -5,6 +5,7 @@ from app.models.all_models import Vehicle
 from app.schemas.models import VehicleIn,VehicleOut
 from app.api.deps import current_user,require_roles
 from app.services.plate import normalize
+from app.services.blacklist import active_blacklist_entry
 from app.services.activity import record_activity
 router=APIRouter()
 @router.get("/",response_model=list[VehicleOut])
@@ -16,14 +17,19 @@ def list_vehicles(q:str|None=None,db:Session=Depends(get_db),_=Depends(current_u
 def create_vehicle(payload:VehicleIn,db:Session=Depends(get_db),_=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):
     n=normalize(payload.plate_number); existing=db.query(Vehicle).filter_by(normalized_plate=n).first()
     if existing: raise HTTPException(409,"Vehicle already exists")
+    if active_blacklist_entry(db,n):
+        raise HTTPException(409,"Vehicle is on the active blacklist and cannot be registered")
     v=Vehicle(normalized_plate=n,**payload.model_dump()); db.add(v); db.flush(); record_activity(db,_.user_id,"VEHICLE_CREATED","VEHICLE",v.vehicle_id,{"plate_number":v.plate_number,"category_id":v.category_id}); db.commit(); db.refresh(v); return v
 @router.put("/{vehicle_id}",response_model=VehicleOut)
 def update_vehicle(vehicle_id:int,payload:VehicleIn,db:Session=Depends(get_db),_=Depends(require_roles("SUPER_ADMIN","ADMIN"))):
     v=db.get(Vehicle,vehicle_id)
     if not v: raise HTTPException(404,"Vehicle not found")
+    normalized_plate=normalize(payload.plate_number)
+    if normalized_plate != v.normalized_plate and active_blacklist_entry(db,normalized_plate):
+        raise HTTPException(409,"Vehicle is on the active blacklist and cannot be assigned")
     before={"plate_number":v.plate_number,"category_id":v.category_id}
     for k,val in payload.model_dump().items(): setattr(v,k,val)
-    v.normalized_plate=normalize(v.plate_number); record_activity(db,_.user_id,"VEHICLE_UPDATED","VEHICLE",v.vehicle_id,{"before":before,"after":{"plate_number":v.plate_number,"category_id":v.category_id}}); db.commit(); db.refresh(v); return v
+    v.normalized_plate=normalized_plate; record_activity(db,_.user_id,"VEHICLE_UPDATED","VEHICLE",v.vehicle_id,{"before":before,"after":{"plate_number":v.plate_number,"category_id":v.category_id}}); db.commit(); db.refresh(v); return v
 @router.delete("/{vehicle_id}")
 def delete_vehicle(vehicle_id:int,db:Session=Depends(get_db),_=Depends(require_roles("SUPER_ADMIN","ADMIN"))):
     v=db.get(Vehicle,vehicle_id)

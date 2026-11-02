@@ -3,8 +3,9 @@ from fastapi import APIRouter,Depends,HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.core.database import get_db
-from app.models.all_models import Vehicle,ParkingSlot,SlotStatus,ParkingRecord,ParkingStatus,Payment,PaymentMethod,PaymentStatus,Blacklist,Notification,Camera,CameraRole,PlateDetection
+from app.models.all_models import Vehicle,ParkingSlot,SlotStatus,ParkingRecord,ParkingStatus,Payment,PaymentMethod,PaymentStatus,Notification,Camera,CameraRole,PlateDetection
 from app.services.plate import normalize, parse_plate
+from app.services.blacklist import active_blacklist_entry
 from app.services.billing import calculate
 from app.schemas.models import EntryIn,EntryOut,ExitIn,ExitOut
 from app.api.deps import current_user,require_roles
@@ -38,7 +39,25 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
         )
     plate = parsed["normalized_plate"] or normalize(payload.license_plate)
     resolved_category_id = parsed.get("suggested_category_id") or payload.category_id
-    black=db.query(Blacklist).filter_by(plate_number=plate,is_active=True).first()
+    blacklist_entry = active_blacklist_entry(db, plate)
+    if blacklist_entry:
+        create_notification(
+            db,
+            "Blacklisted Vehicle Entry Blocked",
+            f"Entry was denied for blacklisted plate {plate}.",
+            "CRITICAL",
+            user.user_id,
+        )
+        record_activity(
+            db,
+            user.user_id,
+            "BLACKLIST_ENTRY_BLOCKED",
+            "BLACKLIST",
+            blacklist_entry.blacklist_id,
+            {"plate_number": plate, "outcome": "BLOCKED"},
+        )
+        db.commit()
+        raise HTTPException(409, "Vehicle is on the active blacklist; entry is denied.")
     vehicle=db.query(Vehicle).filter_by(normalized_plate=plate).first()
     if not vehicle:
         vehicle=Vehicle(plate_number=plate,normalized_plate=plate,category_id=resolved_category_id); db.add(vehicle)
@@ -76,17 +95,14 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
             image_url=payload.plate_image_url,
             verification_status="AUTO_ACCEPTED" if (payload.ocr_confidence or 0) >= 0.80 and parsed.get("valid") else "MANUAL_REQUIRED",
         ))
-    if black:
-        db.add(Notification(title="Blacklisted Vehicle Detected",message=f"Plate {plate} detected at vehicle entry. Manual staff review required.",severity="WARNING",created_by=user.user_id))
-    else:
-        create_notification(db,"Parking session started",f"{plate} entered and was assigned slot {slot.slot_number}.","INFO",user.user_id)
-    record_activity(db,user.user_id,"PARKING_SESSION_STARTED","PARKING_RECORD",record.record_id,{"plate_number":plate,"slot":slot.slot_number,"blacklist_alert":bool(black)})
+    create_notification(db,"Parking session started",f"{plate} entered and was assigned slot {slot.slot_number}.","INFO",user.user_id)
+    record_activity(db,user.user_id,"PARKING_SESSION_STARTED","PARKING_RECORD",record.record_id,{"plate_number":plate,"slot":slot.slot_number,"blacklist_alert":False})
     try:
         db.commit()
     except IntegrityError as exc:
         _raise_entry_conflict(db,plate,exc)
     db.refresh(record)
-    return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"status":record.status.value,"blacklist_alert":bool(black)}
+    return {"record_id":record.record_id,"license_plate":vehicle.plate_number,"slot":slot.slot_number,"entry_time":record.entry_time,"status":record.status.value,"blacklist_alert":False}
 @router.post("/exit",response_model=ExitOut)
 def exit_vehicle(payload:ExitIn,db:Session=Depends(get_db),user=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):
     try:
