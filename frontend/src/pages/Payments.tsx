@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { ReceiptText, RefreshCw, WalletCards } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -37,7 +37,16 @@ export default function Payments() {
   const [transactionId, setTransactionId] = useState('');
   const [amount, setAmount] = useState('');
   const [payerWallet, setPayerWallet] = useState('');
+  const [reviewForm, setReviewForm] = useState<{ submission: WalletSubmission; decision: 'VERIFIED' | 'REJECTED' } | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [reviewError, setReviewError] = useState('');
+  const reviewDialogRef = useRef<HTMLDialogElement>(null);
   const canVerify = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
+  useEffect(() => {
+    const dialog = reviewDialogRef.current;
+    if (reviewForm && dialog && !dialog.open) dialog.showModal();
+  }, [reviewForm]);
 
   const load = useCallback(async () => {
     try {
@@ -110,27 +119,40 @@ export default function Payments() {
     }
   };
 
-  const reviewWalletPayment = async (submission: WalletSubmission, decision: 'VERIFIED' | 'REJECTED') => {
-    const confirmed = window.confirm(
-      decision === 'VERIFIED'
-        ? `Confirm that transaction ${submission.transaction_id} and ৳${submission.amount_due.toFixed(2)} were checked against the receiving wallet history?`
-        : `Reject wallet transaction ${submission.transaction_id}?`,
-    );
-    if (!confirmed) return;
-    const note = window.prompt('Verification note (recorded in the audit log):', decision === 'VERIFIED' ? 'Matched against receiving wallet history.' : '');
-    if (note === null || note.trim().length < 3) {
-      setMessage('A verification note of at least 3 characters is required.');
+  const openWalletReview = (submission: WalletSubmission, decision: 'VERIFIED' | 'REJECTED') => {
+    setReviewNote('');
+    setReviewError('');
+    setReviewForm({ submission, decision });
+  };
+
+  const closeWalletReview = () => {
+    if (reviewDialogRef.current?.open) reviewDialogRef.current.close();
+    setReviewForm(null);
+    setReviewError('');
+  };
+
+  const submitWalletReview = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!reviewForm) return;
+    const { submission, decision } = reviewForm;
+    const note = reviewNote.trim();
+    if (note.length < 3) {
+      setReviewError('Enter a verification note of at least 3 characters.');
       return;
     }
     setBusy(`review:${submission.submission_id}`);
     setMessage('');
+    setReviewError('');
     try {
-      const response = await api.post(`/payments/personal-wallet/submissions/${submission.submission_id}/review`, { decision, note: note.trim() });
+      const response = await api.post(`/payments/personal-wallet/submissions/${submission.submission_id}/review`, { decision, note });
       if (response.data.receipt) setReceipt(response.data.receipt);
       setMessage(decision === 'VERIFIED' ? 'Wallet transfer verified. The session is now complete.' : 'Wallet transfer rejected. The session remains active and the amount remains due.');
+      closeWalletReview();
       await Promise.all([load(), loadReviews()]);
     } catch (error) {
-      setMessage(apiError(error, 'Could not review this transaction.'));
+      const errorMessage = apiError(error, 'Could not review this transaction.');
+      setReviewError(errorMessage);
+      setMessage(errorMessage);
     } finally {
       setBusy(null);
     }
@@ -224,9 +246,56 @@ export default function Payments() {
           <div className="min-w-48 flex-1"><div className="font-bold text-white">{submission.plate_number} · {submission.method.replace('_PERSONAL', '')}</div><div className="mt-1 break-all font-mono text-xs text-cyan-200">{submission.transaction_id}</div><div className="mt-1 text-xs text-slate-500">Record #{submission.record_id} · Submitted {new Date(submission.submitted_at).toLocaleString()}</div></div>
           <div className="text-sm font-bold text-amber-200">Due ৳{submission.amount_due.toFixed(2)} · Sent ৳{submission.submitted_amount.toFixed(2)}</div>
           {submission.payer_wallet_masked && <span className="text-xs text-slate-500">{submission.payer_wallet_masked}</span>}
-          <div className="flex gap-2"><button type="button" disabled={!!busy} onClick={() => void reviewWalletPayment(submission, 'VERIFIED')} className="rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 disabled:opacity-40">Verify</button><button type="button" disabled={!!busy} onClick={() => void reviewWalletPayment(submission, 'REJECTED')} className="rounded-lg bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-200 disabled:opacity-40">Reject</button></div>
+          <div className="flex gap-2"><button type="button" disabled={!!busy} onClick={() => openWalletReview(submission, 'VERIFIED')} className="rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200 disabled:opacity-40">Verify</button><button type="button" disabled={!!busy} onClick={() => openWalletReview(submission, 'REJECTED')} className="rounded-lg bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-200 disabled:opacity-40">Reject</button></div>
         </article>)}</div> : <p className="p-8 text-center text-sm text-slate-500">No personal-wallet transactions are waiting for review.</p>}
       </section>}
+
+      <dialog
+        ref={reviewDialogRef}
+        aria-labelledby="wallet-review-title"
+        onCancel={event => {
+          event.preventDefault();
+          closeWalletReview();
+        }}
+        className="m-auto max-h-[90vh] w-[min(32rem,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-950 p-0 text-slate-100 shadow-2xl backdrop:bg-black/70"
+      >
+        {reviewForm && <form onSubmit={submitWalletReview} className="p-6">
+          <h2 id="wallet-review-title" className="text-xl font-black text-white">
+            {reviewForm.decision === 'VERIFIED' ? 'Verify wallet transfer' : 'Reject wallet transfer'}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            {reviewForm.decision === 'VERIFIED'
+              ? 'Confirm only after matching the transaction in the receiving wallet history.'
+              : 'Reject only after reviewing the submitted transaction and amount.'}
+          </p>
+          <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-xl border border-slate-800 bg-slate-900 p-4 text-sm">
+            <dt className="text-slate-400">Plate</dt><dd className="break-all text-right font-semibold">{reviewForm.submission.plate_number}</dd>
+            <dt className="text-slate-400">Transaction ID</dt><dd className="break-all text-right font-mono">{reviewForm.submission.transaction_id}</dd>
+            <dt className="text-slate-400">Amount due</dt><dd className="text-right">৳{reviewForm.submission.amount_due.toFixed(2)}</dd>
+            <dt className="text-slate-400">Amount submitted</dt><dd className="text-right">৳{reviewForm.submission.submitted_amount.toFixed(2)}</dd>
+          </dl>
+          <label htmlFor="wallet-review-note" className="mt-4 block text-sm font-semibold text-slate-200">
+            Audit note
+            <textarea
+              id="wallet-review-note"
+              required
+              minLength={3}
+              maxLength={500}
+              rows={3}
+              value={reviewNote}
+              onChange={event => setReviewNote(event.target.value)}
+              className="mt-2 w-full resize-y rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-400"
+            />
+          </label>
+          {reviewError && <p role="alert" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{reviewError}</p>}
+          <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" onClick={closeWalletReview} className="rounded-xl border border-slate-700 px-4 py-3 text-sm font-bold text-slate-200">Cancel</button>
+            <button type="submit" disabled={!!busy || reviewNote.trim().length < 3} className={`rounded-xl px-4 py-3 text-sm font-bold text-white disabled:opacity-50 ${reviewForm.decision === 'VERIFIED' ? 'bg-emerald-600' : 'bg-rose-600'}`}>
+              {busy ? 'Saving review…' : reviewForm.decision === 'VERIFIED' ? 'Confirm verification' : 'Confirm rejection'}
+            </button>
+          </div>
+        </form>}
+      </dialog>
     </div>
   );
 }

@@ -801,6 +801,8 @@ For release readiness, separately verify database migrations, backup restoration
 | [`docs/BANGLA_ENGLISH_ALPR_SETUP.md`](docs/BANGLA_ENGLISH_ALPR_SETUP.md) | Bengali/English OCR setup |
 | [`docs/FRONTEND_DESIGN_SYSTEM.md`](docs/FRONTEND_DESIGN_SYSTEM.md) | Theme tokens and frontend design system |
 | [`docs/FRONTEND_RESPONSIVE_VERIFICATION.md`](docs/FRONTEND_RESPONSIVE_VERIFICATION.md) | Responsive checks and known limitations |
+| [`docs/PAGE_API_INTEGRATION_MATRIX.md`](docs/PAGE_API_INTEGRATION_MATRIX.md) | Route-to-API evidence and untested workflows |
+| [`docs/FINAL_SYSTEM_VERIFICATION.md`](docs/FINAL_SYSTEM_VERIFICATION.md) | Latest verified status and remaining blockers |
 
 Some documents are version-dependent. Open the files present in your checkout; do not assume an optional document exists in every archive revision.
 

@@ -3,21 +3,25 @@
 ## Executive summary
 
 The application has received the code-level security, reporting, lifecycle, and
-database changes listed below. The current backend suite and frontend build
-pass. A protected backup/restore comparison and isolated MariaDB concurrency
-tests have also passed. Hardware-dependent AI, camera-derived occupancy,
-external audit retention, payment-provider integrations, and Docker runtime
-remain unverified or incomplete.
+database changes listed below. The backend suite and frontend lint/build pass.
+A protected backup/restore comparison and isolated MariaDB concurrency tests
+have also passed. In the latest session, the previously stalled XAMPP MariaDB
+was restarted after a verified local safety copy; the backend and frontend
+responded again. The release remains partial: hardware-dependent AI,
+camera-derived occupancy, external audit retention, full page-by-page browser
+coverage, official payment integrations, and Docker runtime remain unverified
+or incomplete. See [`docs/FINAL_SYSTEM_VERIFICATION.md`](docs/FINAL_SYSTEM_VERIFICATION.md)
+for the latest status.
 
 ## Verified
 
 | Area | Result | Evidence |
 |---|---|---|
-| Backend regression tests | PASS | Full suite: 49 passed, 2 skipped. The skips are opt-in MySQL tests; the MariaDB concurrency tests were separately run and passed (2 tests). |
+| Backend regression tests | PASS | Latest full suite: 57 passed, 2 skipped. The skips are opt-in MySQL tests; two MariaDB concurrency tests were separately run and passed in an earlier isolated run. |
 | Python syntax | PASS | `python -m compileall -q app tests` completed successfully after the wallet changes. |
 | Frontend | PASS | `npm run build` completed TypeScript checking and a production Vite build after the wallet UI changes. |
 | Patch formatting | PASS | `git diff --check` completed; Git reported only its normal LF/CRLF conversion notices. |
-| Running services | PASS | XAMPP Apache listeners on 80/443, MariaDB on 3302, backend on 8000, Vite on 5173; backend OpenAPI returned HTTP 200. |
+| Running services | PARTIAL | Latest check confirmed MariaDB on 3302, backend root on 8000, and Vite on 5173. Apache listeners on 80/443 were not rechecked in this session. |
 | Database backup | PASS | `scripts/backup_mysql.ps1` created a protected SQL backup in `backups/` before the schema change. |
 | Active-session preflight | PASS | The live database had zero duplicate groups of parked sessions per vehicle. |
 | Active-session database migration | PASS | `active_vehicle_id` and the unique `uq_parking_records_active_vehicle` index were verified after applying startup migrations. |
@@ -32,6 +36,9 @@ remain unverified or incomplete.
 | Blacklist lifecycle | PASS | Automated tests cover soft-deactivation/reactivation behavior and auditing. |
 | Default credential cleanup | PASS | The login form no longer prefills a shared administrator credential or advertises a demo password. |
 | Docker Compose secrets | PASS | MySQL/root/application passwords, signing key, and initial admin password are required inputs; fixed `root`/placeholder signing defaults were removed. |
+| Blocklist entry enforcement | PASS | Active blacklist checks now deny vehicle registration, parking entry, reservation creation, and reservation check-in, with notifications/audit events. Four isolated regression tests were added and pass. |
+| Local administrator recovery | PASS (isolated tests) | Added hidden-prompt bootstrap/reset CLI with no password arguments, duplicate-admin protection, strength/history checks, audit logging, token-version invalidation, and optional forced rotation. Live reset requires an owner-entered password and was not run. |
+| Wallet review UI | PASS (browser interaction) | Real Payments page showed configured receiver and pending rows. An accessible review dialog opened and was cancelled without changing a payment; actual transfer and review remain manual and untested. |
 
 ## Implemented safeguards and behavior
 
