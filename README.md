@@ -2,7 +2,7 @@
 
 <img src="docs/assets/smart-parking-hero.svg" alt="Smart AI-Based Vehicle Parking Management System — Park smarter, manage intelligently" width="100%" />
 
-<br /> 
+<br />
 
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/UI-React-149ECA?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
