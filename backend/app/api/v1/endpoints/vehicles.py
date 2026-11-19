@@ -8,7 +8,7 @@ from app.services.plate import normalize
 from app.services.blacklist import active_blacklist_entry
 from app.services.activity import record_activity
 router=APIRouter()
-@router.get("/",response_model=list[VehicleOut])
+@router.get("/",response_model=None)
 def list_vehicles(
     q: str | None = None,
     page: int = Query(default=1, ge=1),
