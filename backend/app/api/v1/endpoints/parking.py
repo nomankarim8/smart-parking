@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter,Depends,HTTPException
+from fastapi import APIRouter,Depends,HTTPException,Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.core.database import get_db
@@ -144,5 +144,18 @@ def exit_vehicle(payload:ExitIn,db:Session=Depends(get_db),user=Depends(require_
 def active(db:Session=Depends(get_db),_=Depends(current_user)):
     records=db.query(ParkingRecord).filter_by(status=ParkingStatus.PARKED).order_by(ParkingRecord.entry_time.desc()).all(); return [{"record_id":r.record_id,"plate":r.vehicle.plate_number,"slot":r.slot.slot_number,"category":r.vehicle.category.category_name,"entry_time":r.entry_time.isoformat()} for r in records]
 @router.get("/history")
-def history(db:Session=Depends(get_db),_=Depends(current_user)):
-    records=db.query(ParkingRecord).order_by(ParkingRecord.record_id.desc()).limit(500).all(); return [{"record_id":r.record_id,"plate":r.vehicle.plate_number,"slot":r.slot.slot_number,"category":r.vehicle.category.category_name,"entry_time":r.entry_time.isoformat(),"exit_time":r.exit_time.isoformat() if r.exit_time else None,"status":r.status.value} for r in records]
+def history(
+    page:int=Query(default=1,ge=1),
+    page_size:int=Query(default=25,ge=1,le=100),
+    paginated:bool=False,
+    db:Session=Depends(get_db),
+    _=Depends(current_user),
+):
+    query=db.query(ParkingRecord).order_by(ParkingRecord.record_id.desc())
+    if paginated:
+        total=query.count()
+        records=query.offset((page-1)*page_size).limit(page_size).all()
+        items=[{"record_id":r.record_id,"plate":r.vehicle.plate_number,"slot":r.slot.slot_number,"category":r.vehicle.category.category_name,"entry_time":r.entry_time.isoformat(),"exit_time":r.exit_time.isoformat() if r.exit_time else None,"status":r.status.value} for r in records]
+        return {"items":items,"total":total,"page":page,"page_size":page_size,"total_pages":(total+page_size-1)//page_size}
+    records=query.limit(500).all()
+    return [{"record_id":r.record_id,"plate":r.vehicle.plate_number,"slot":r.slot.slot_number,"category":r.vehicle.category.category_name,"entry_time":r.entry_time.isoformat(),"exit_time":r.exit_time.isoformat() if r.exit_time else None,"status":r.status.value} for r in records]

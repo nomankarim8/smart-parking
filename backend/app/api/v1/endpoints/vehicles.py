@@ -1,7 +1,7 @@
 from fastapi import APIRouter,Depends,HTTPException,Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.models.all_models import Vehicle
+from app.models.all_models import Vehicle, VehicleCategory
 from app.schemas.models import VehicleIn,VehicleOut
 from app.api.deps import current_user,require_roles
 from app.services.plate import normalize
@@ -9,10 +9,33 @@ from app.services.blacklist import active_blacklist_entry
 from app.services.activity import record_activity
 router=APIRouter()
 @router.get("/",response_model=list[VehicleOut])
-def list_vehicles(q:str|None=None,db:Session=Depends(get_db),_=Depends(current_user)):
+def list_vehicles(
+    q: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+    paginated: bool = False,
+    db: Session = Depends(get_db),
+    _=Depends(current_user),
+):
     query=db.query(Vehicle).order_by(Vehicle.vehicle_id.desc())
     if q: query=query.filter(Vehicle.normalized_plate.contains(normalize(q)))
+    if paginated:
+        total=query.count()
+        items=query.offset((page-1)*page_size).limit(page_size).all()
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size,
+        }
     return query.limit(200).all()
+@router.get("/categories")
+def list_vehicle_categories(db:Session=Depends(get_db),_=Depends(current_user)):
+    return [
+        {"category_id": category.category_id, "category_name": category.category_name}
+        for category in db.query(VehicleCategory).order_by(VehicleCategory.category_id).all()
+    ]
 @router.post("/",response_model=VehicleOut)
 def create_vehicle(payload:VehicleIn,db:Session=Depends(get_db),_=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):
     n=normalize(payload.plate_number); existing=db.query(Vehicle).filter_by(normalized_plate=n).first()
