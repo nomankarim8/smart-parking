@@ -38,6 +38,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const expireSession = () => {
+      localStorage.removeItem('smart_parking_token');
+      localStorage.removeItem(USER_THEME_ID_KEY);
+      setUser(null);
+    };
+    window.addEventListener('smart-parking-session-expired', expireSession);
+    return () => window.removeEventListener('smart-parking-session-expired', expireSession);
+  }, []);
+
   const login = async (username: string, password: string) => {
     const response = await api.post('/auth/login', { username, password });
     localStorage.setItem('smart_parking_token', response.data.access_token);
