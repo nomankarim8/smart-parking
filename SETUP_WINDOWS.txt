@@ -1,5 +1,5 @@
 SMART PARKING - WINDOWS SETUP
- 
+  
 1) Extract the folder and open it in VS Code.
 2) Start XAMPP MySQL (Apache is optional unless you use phpMyAdmin).
 3) Create the database from database/schema.sql, then run database/seeds.sql.
