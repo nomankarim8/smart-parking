@@ -53,3 +53,18 @@ network downloads of OCR models may require a separate controlled setup.
 
 Real footage, camera position, lighting, supported formats, trained weights,
 and measured accuracy remain external validation requirements.
+
+## Current verified status
+
+The project diagnostic was executed on this environment and reported:
+
+- Plate YOLO: `MISSING` / `MODEL_MISSING`
+- Vehicle YOLO: `MODEL_MISSING`
+- Tesseract: `MISSING`
+- Bengali language data: unavailable
+- OpenCV: available
+- CPU inference configuration: available
+- Real footage verification: false
+
+These values describe the environment only. Suitable licensed weights and real
+authorized footage must be supplied before automatic recognition is claimed.

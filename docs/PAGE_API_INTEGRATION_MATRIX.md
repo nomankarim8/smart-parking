@@ -33,3 +33,15 @@ coverage, role-by-role permissions, CRUD/filter/pagination interactions, and
 mobile/tablet/desktop behavior still need route-specific real-browser checks.
 See [final system verification](./FINAL_SYSTEM_VERIFICATION.md) for the
 release decision and hardware/external-service limitations.
+
+## Remediation implementation matrix
+
+| Page/feature | API integration | Implemented result | Verification |
+|---|---|---|---|
+| Vehicles | `/vehicles/`, `/vehicles/categories` | Add modal, category loading, create, duplicate errors, retry, server pagination | Frontend build PASS; pagination test PASS |
+| Dashboard | `/dashboard/stats`, `/slots/`, `/health` | Refresh, health state, section errors, retry, stale indicator | Frontend build and runtime `/health` PASS |
+| Slots | `/slots/` | Loading, empty, error and retry states | Frontend build PASS |
+| History | `/parking/history`, `/reports/history.csv` | Server pagination, export failure feedback | Frontend build PASS |
+| Entry | `/vehicles/categories`, `/parking/entry`, `/reservations/check-in` | Dynamic category IDs and reservation-pass state | Frontend build PASS |
+| Reservations | `/reservations/categories`, `/reservations/` | React Router gate check-in link | Frontend build PASS |
+| Layout/App | Existing auth context and REST client | Logo Link, route guards, 403 UX, 404 wildcard, 401 session clearing | Frontend build PASS |

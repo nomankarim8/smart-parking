@@ -705,6 +705,27 @@ For release readiness, separately verify database migrations, backup restoration
 
 ---
 
+# ✅ Remediation verification
+
+The implementation cycle added:
+
+- A complete Add Vehicle modal and actual `/vehicles/` create integration.
+- React Router logo navigation and reservation gate navigation.
+- Real `/health` database status and a manual dashboard refresh.
+- Loading, empty, failure, retry, and stale-data states.
+- Server-side vehicle/history pagination with backward-compatible list responses.
+- Central 401 session expiry handling and role-aware route protection.
+- A wildcard Not Found page and dynamic vehicle-category loading.
+- Honest AI and payment configuration documentation.
+
+Run `python check_ai.py` from `backend/` to inspect model and OCR readiness.
+Run `python -m pytest -q` from `backend/` for the backend suite.
+Run `npm run build` from `frontend/` for the production bundle.
+
+Detailed reports are in `docs/BUG_FIX_REPORT.md`, `docs/PAGINATION_GUIDE.md`, `docs/AUTHENTICATION_ERROR_HANDLING.md`, `docs/FINAL_FUNCTIONAL_VERIFICATION.md`, and `docs/PAYMENT_CONFIGURATION.md`.
+
+---
+
 # 🧰 Troubleshooting
 
 <details>
