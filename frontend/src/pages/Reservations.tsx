@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { CalendarClock, Check, Copy, TicketCheck, X } from 'lucide-react';
 import api from '../services/api';
@@ -140,7 +141,13 @@ export default function Reservations() {
             {issuedPass.sms_delivery&&<p className={`mt-2 text-center text-xs ${issuedPass.sms_delivery.status==='queued'?'text-emerald-300':issuedPass.sms_delivery.status==='failed'?'text-rose-300':'text-amber-300'}`}>{issuedPass.sms_delivery.message}</p>}
             <div className="mt-3 flex gap-2">
               <button type="button" onClick={copyToken} className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-xs font-bold text-slate-200"><Copy size={14} /> Copy pass token</button>
-              <a href="/entry" className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300"><Check size={14} /> Gate check-in</a>
+              <Link
+                to={`/entry?reservation=${encodeURIComponent(issuedPass.check_in_token)}`}
+                state={{ reservationToken: issuedPass.check_in_token }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300"
+              >
+                <Check size={14} /> Gate check-in
+              </Link>
             </div>
             <p className="mt-2 break-all text-center font-mono text-[10px] text-slate-600">{issuedPass.check_in_token}</p>
           </div>}

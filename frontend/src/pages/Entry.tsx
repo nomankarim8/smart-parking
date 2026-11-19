@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import type { ALPRResult } from '../types';
 import { ScanLine, UploadCloud, Camera as CameraIcon, MapPin, ShieldCheck, AlertTriangle } from 'lucide-react';
@@ -10,13 +10,17 @@ type QrDetectorConstructor = new (options:{formats:string[]})=>QrDetector;
 
 export default function Entry(){
   const [searchParams]=useSearchParams();
+  const location=useLocation();
   const [plate,setPlate]=useState(()=>searchParams.get('plate')||'');
   const [cat,setCat]=useState(2);
   const [alpr,setAlpr]=useState<ALPRResult|null>(null);
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
   const [camera,setCamera]=useState<Cam|null>(null);
-  const [reservationToken,setReservationToken]=useState('');
+  const [reservationToken,setReservationToken]=useState(() => {
+    const state = location.state as { reservationToken?: string } | null;
+    return state?.reservationToken || searchParams.get('reservation') || '';
+  });
   const [scanning,setScanning]=useState(false);
   const videoRef=useRef<HTMLVideoElement|null>(null);
   const scannerStream=useRef<MediaStream|null>(null);
