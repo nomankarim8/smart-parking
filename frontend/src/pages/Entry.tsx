@@ -5,6 +5,7 @@ import type { ALPRResult } from '../types';
 import { ScanLine, UploadCloud, Camera as CameraIcon, MapPin, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 type Cam = { camera_id:number; camera_name:string; location:string; camera_role:string; camera_type:string; status:string; stream_configured:boolean };
+type Category = { category_id:number; category_name:string };
 type QrDetector = { detect:(source:HTMLVideoElement)=>Promise<{rawValue:string}[]> };
 type QrDetectorConstructor = new (options:{formats:string[]})=>QrDetector;
 
@@ -12,7 +13,9 @@ export default function Entry(){
   const [searchParams]=useSearchParams();
   const location=useLocation();
   const [plate,setPlate]=useState(()=>searchParams.get('plate')||'');
-  const [cat,setCat]=useState(2);
+  const [cat,setCat]=useState(0);
+  const [categories,setCategories]=useState<Category[]>([]);
+  const [categoryError,setCategoryError]=useState('');
   const [alpr,setAlpr]=useState<ALPRResult|null>(null);
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState('');
@@ -28,6 +31,15 @@ export default function Entry(){
 
   useEffect(()=>{
     api.get('/cameras/').then(r=>setCamera(r.data.find((c:Cam)=>c.camera_role==='ENTRY')||null)).catch(()=>{});
+    const loadCategories=()=>api.get('/vehicles/categories')
+      .then(r=>{
+        const items=r.data as Category[];
+        setCategories(items);
+        setCategoryError('');
+        setCat(current=>items.some(category=>category.category_id===current)?current:(items[0]?.category_id||0));
+      })
+      .catch(()=>setCategoryError('Vehicle categories could not be loaded.'));
+    void loadCategories();
   },[]);
   useEffect(()=>{
     const detectedPlate=searchParams.get('plate');
@@ -57,6 +69,10 @@ export default function Entry(){
 
   const submit=async(e:FormEvent)=>{
     e.preventDefault(); if(!plate)return;
+    if(!cat || !categories.some(category=>category.category_id===cat)){
+      setMsg('Select a valid vehicle category before confirming entry.');
+      return;
+    }
     setBusy(true);
     try{
       const r=await api.post('/parking/entry',{
@@ -199,7 +215,7 @@ export default function Entry(){
         <h3 className="font-bold text-white">Entry Confirmation</h3>
         <div className="mt-5 space-y-4">
           <div><label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">License plate</label><input value={plate} onChange={e=>setPlate(e.target.value.toUpperCase())} placeholder="DHAKA METRO GA 12-3456" className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3.5 font-semibold text-white outline-none focus:border-indigo-500"/></div>
-          <div><label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">Vehicle category</label><select value={cat} onChange={e=>setCat(Number(e.target.value))} className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3.5 text-white"><option value={1}>Motorcycle</option><option value={2}>Car</option><option value={3}>Van</option><option value={4}>Bus</option><option value={5}>Truck</option></select>{alpr?.suggested_category_id&&<p className="mt-2 text-xs text-indigo-300">Auto-suggested from plate class: {alpr.vehicle_category}</p>}</div>
+          <div><label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500">Vehicle category</label><select value={cat} disabled={!categories.length||busy} onChange={e=>setCat(Number(e.target.value))} className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3.5 text-white"><option value={0}>Select a category</option>{categories.map(category=><option key={category.category_id} value={category.category_id}>{category.category_name}</option>)}</select>{categoryError&&<button type="button" onClick={()=>api.get('/vehicles/categories').then(r=>{setCategories(r.data);setCategoryError('')}).catch(()=>setCategoryError('Vehicle categories could not be loaded.'))} className="mt-2 text-xs font-bold text-amber-300">Category load failed. Retry</button>} {!categories.length&&!categoryError&&<p className="mt-2 text-xs text-slate-500">Loading categories…</p>} {alpr?.suggested_category_id&&<p className="mt-2 text-xs text-indigo-300">Auto-suggested from plate class: {alpr.vehicle_category}</p>}</div>
           <button disabled={busy} className="w-full rounded-xl bg-emerald-500 py-3.5 font-bold text-slate-950 hover:bg-emerald-400 disabled:opacity-50">{busy?'PROCESSING...':'CONFIRM VEHICLE ENTRY'}</button>
         </div>
       </div>

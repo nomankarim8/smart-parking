@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -27,6 +27,13 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (localStorage.getItem('smart_parking_session_expired') === 'true') {
+      setError('Your session expired or is invalid. Please sign in again.');
+      localStorage.removeItem('smart_parking_session_expired');
+    }
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

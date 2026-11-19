@@ -1,22 +1,83 @@
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import api from '../services/api';
 import type { Vehicle } from '../types';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, X } from 'lucide-react';
+
+type Category = { category_id:number; category_name:string };
+type PaginatedVehicles = { items:Vehicle[]; total:number; page:number; page_size:number; total_pages:number };
+
+function errorDetail(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as {response?: {data?: {detail?: unknown}}}).response;
+    if (typeof response?.data?.detail === 'string') return response.data.detail;
+  }
+  return fallback;
+}
 
 export default function Vehicles() {
   const [items, setItems] = useState<Vehicle[]>([]);
   const [q, setQ] = useState('');
+  const [page,setPage]=useState(1);
+  const [pageSize,setPageSize]=useState(25);
+  const [total,setTotal]=useState(0);
+  const [totalPages,setTotalPages]=useState(0);
+  const [loading,setLoading]=useState(false);
+  const [loadError,setLoadError]=useState('');
+  const [open,setOpen]=useState(false);
+  const [categories,setCategories]=useState<Category[]>([]);
+  const [formError,setFormError]=useState('');
+  const [submitting,setSubmitting]=useState(false);
+  const [plate,setPlate]=useState('');
+  const [categoryId,setCategoryId]=useState('');
+  const [ownerName,setOwnerName]=useState('');
+  const [ownerPhone,setOwnerPhone]=useState('');
+  const [vehicleModel,setVehicleModel]=useState('');
+  const [vehicleColor,setVehicleColor]=useState('');
 
-  const load = () =>
-    api
-      .get('/vehicles/', {
-        params: { q },
+  const load = () => {
+    setLoading(true);
+    setLoadError('');
+    api.get('/vehicles/', {params:{q,page,page_size:pageSize,paginated:true}})
+      .then(r=>{
+        const data=r.data as PaginatedVehicles;
+        setItems(data.items);
+        setTotal(data.total);
+        setTotalPages(data.total_pages);
+        if(data.page>data.total_pages && data.total_pages>0)setPage(data.total_pages);
       })
-      .then((r) => setItems(r.data));
+      .catch(error=>setLoadError(errorDetail(error,'Vehicles could not be loaded. Check your connection and retry.')))
+      .finally(()=>setLoading(false));
+  };
 
   useEffect(() => {
     load();
-  }, [q]);
+  }, [q,page,pageSize]);
+
+  useEffect(()=>{
+    api.get('/vehicles/categories')
+      .then(r=>{setCategories(r.data); if(!categoryId) setCategoryId(String(r.data[0]?.category_id||''));})
+      .catch(()=>setFormError('Vehicle categories could not be loaded.'));
+  },[]);
+
+  const submit=async(event:FormEvent)=>{
+    event.preventDefault();
+    if(!plate.trim() || !categoryId){setFormError('Plate number and vehicle category are required.');return;}
+    setSubmitting(true);setFormError('');
+    try{
+      await api.post('/vehicles/',{
+        plate_number:plate.trim(),
+        category_id:Number(categoryId),
+        owner_name:ownerName.trim()||null,
+        owner_phone:ownerPhone.trim()||null,
+        vehicle_model:vehicleModel.trim()||null,
+        vehicle_color:vehicleColor.trim()||null,
+      });
+      setOpen(false);setPlate('');setOwnerName('');setOwnerPhone('');setVehicleModel('');setVehicleColor('');
+      setPage(1);load();
+    }catch(error){
+      setFormError(errorDetail(error,'Vehicle could not be created.'));
+    }finally{setSubmitting(false);}
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -31,7 +92,7 @@ export default function Vehicles() {
           </h1>
         </div>
 
-        <button className="flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold">
+        <button type="button" onClick={()=>{setFormError('');setOpen(true)}} className="flex items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold">
           <Plus size={17} />
           Add Vehicle
         </button>
