@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   CarFront,
@@ -158,10 +158,14 @@ export default function Layout({ children }: { children: ReactNode }) {
           sidebarCollapsed ? 'w-20' : 'w-64'
         }`}
       >
-        <div className={`mb-7 flex min-h-12 items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3 px-2'}`}>
+        <Link
+          to="/"
+          aria-label="Go to dashboard"
+          className={`mb-7 flex min-h-12 items-center rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 ${sidebarCollapsed ? 'justify-center' : 'gap-3 px-2'}`}
+        >
           <div className="app-brand-mark grid h-10 w-10 shrink-0 place-items-center rounded-xl">
             <ParkingSquare size={21} aria-hidden="true" />
-          </div>
+          </Link>
           {!sidebarCollapsed && (
             <div className="min-w-0">
               <div className="truncate text-sm font-extrabold tracking-wide">SMART PARKING</div>
@@ -237,10 +241,10 @@ export default function Layout({ children }: { children: ReactNode }) {
           <button type="button" aria-label="Close navigation menu" className="absolute inset-0 bg-black/50" onClick={closeMobileMenu} />
           <aside id="mobile-navigation" ref={drawerRef} role="dialog" aria-modal="true" aria-label="Main navigation" className="app-mobile-drawer absolute inset-y-0 left-0 flex w-[min(19rem,88vw)] flex-col border-r p-4 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <Link to="/" aria-label="Go to dashboard" className="flex items-center gap-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400" onClick={closeMobileMenu}>
                 <div className="app-brand-mark grid h-10 w-10 place-items-center rounded-xl"><ParkingSquare size={21} /></div>
                 <div><div className="text-sm font-extrabold">SMART PARKING</div><div className="text-[10px] uppercase tracking-wider text-muted">Operations</div></div>
-              </div>
+              </Link>
               <button type="button" aria-label="Close navigation menu" className="app-quiet-button grid h-10 w-10 place-items-center rounded-xl" onClick={closeMobileMenu}><X size={19} /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">{navigation()}</div>
