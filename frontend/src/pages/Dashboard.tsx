@@ -11,6 +11,7 @@ import {
   ParkingCircle,
   ShieldCheck,
   TicketCheck,
+  RefreshCw,
 } from 'lucide-react';
 import {
   Area,
@@ -28,15 +29,34 @@ export default function Dashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [forecast, setForecast] = useState<ForecastPoint[]>([]);
   const [forecastError, setForecastError] = useState('');
+  const [refreshing,setRefreshing]=useState(false);
+  const [healthStatus,setHealthStatus]=useState<'CHECKING'|'ONLINE'|'DEGRADED'|'OFFLINE'>('CHECKING');
+  const [statsError,setStatsError]=useState('');
+  const [slotsError,setSlotsError]=useState('');
 
-  const loadDashboard = () =>
-    Promise.all([api.get('/dashboard/stats'), api.get('/slots/')]).then(
-      ([statsResponse, slotsResponse]) => {
-        setStats(statsResponse.data);
-        setSlots(slotsResponse.data);
-        setLastUpdated(new Date());
-      },
-    );
+  const checkHealth=async()=>{
+    setHealthStatus('CHECKING');
+    const base=(import.meta.env.VITE_API_URL||'http://localhost:8000/api/v1').replace(/\/api\/v1\/?$/,'');
+    try{
+      const response=await fetch(`${base}/health`);
+      if(!response.ok) throw new Error('Health request failed');
+      const data=await response.json();
+      setHealthStatus(data.database==='connected'?'ONLINE':'DEGRADED');
+    }catch{
+      setHealthStatus('OFFLINE');
+    }
+  };
+
+  const loadDashboard = async () => {
+    setRefreshing(true);
+    setStatsError(''); setSlotsError('');
+    await Promise.all([
+      api.get('/dashboard/stats').then(r=>{setStats(r.data)}).catch(()=>setStatsError('Dashboard statistics could not be loaded.')),
+      api.get('/slots/',{params:{paginated:true,page:1,page_size:200}}).then(r=>setSlots(Array.isArray(r.data)?r.data:r.data.items)).catch(()=>setSlotsError('Parking-slot summary could not be loaded.')),
+      checkHealth(),
+    ]);
+    setLastUpdated(new Date()); setRefreshing(false);
+  };
 
   useEffect(() => {
     loadDashboard();
@@ -76,11 +96,23 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            SYSTEM ONLINE
+          <div className="flex flex-wrap items-center gap-2">
+            <div className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold ${healthStatus==='ONLINE'?'border-emerald-500/20 bg-emerald-500/10 text-emerald-300':healthStatus==='DEGRADED'?'border-amber-500/20 bg-amber-500/10 text-amber-300':healthStatus==='OFFLINE'?'border-rose-500/20 bg-rose-500/10 text-rose-300':'border-sky-500/20 bg-sky-500/10 text-sky-300'}`}>
+              <span className={`h-2 w-2 rounded-full ${healthStatus==='ONLINE'?'bg-emerald-400':healthStatus==='DEGRADED'?'bg-amber-400':healthStatus==='OFFLINE'?'bg-rose-400':'bg-sky-400'}`} />
+              SYSTEM {healthStatus}
+            </div>
+            <button type="button" onClick={()=>void loadDashboard()} disabled={refreshing} className="flex min-h-10 items-center gap-2 rounded-full border border-slate-700 px-3 text-xs font-bold text-slate-300 disabled:opacity-50">
+              <RefreshCw size={14} className={refreshing?'animate-spin':''}/> {refreshing?'Refreshing…':'Refresh'}
+            </button>
           </div>
         </header>
+
+        {(statsError||slotsError)&&(
+          <div className="mb-4 grid gap-2 sm:grid-cols-2">
+            {statsError&&<div className="rounded-xl border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-300">{statsError} <button type="button" onClick={()=>void loadDashboard()} className="ml-2 font-bold underline">Retry</button></div>}
+            {slotsError&&<div className="rounded-xl border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-300">{slotsError} <button type="button" onClick={()=>void loadDashboard()} className="ml-2 font-bold underline">Retry</button></div>}
+          </div>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <StatCard
@@ -167,6 +199,7 @@ export default function Dashboard() {
         <p className="mt-3 text-right text-xs text-slate-600">
           Live occupancy refreshes every 5 seconds
           {lastUpdated ? ` · Updated ${lastUpdated.toLocaleTimeString()}` : ''}
+          {(statsError||slotsError)&&' · Showing previously loaded data where available (stale)'}
         </p>
 
       </div>

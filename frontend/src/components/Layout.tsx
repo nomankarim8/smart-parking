@@ -165,14 +165,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         >
           <div className="app-brand-mark grid h-10 w-10 shrink-0 place-items-center rounded-xl">
             <ParkingSquare size={21} aria-hidden="true" />
-          </Link>
+          </div>
           {!sidebarCollapsed && (
             <div className="min-w-0">
               <div className="truncate text-sm font-extrabold tracking-wide">SMART PARKING</div>
               <div className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted">Operations</div>
             </div>
           )}
-        </div>
+        </Link>
 
         <div className="min-h-0 flex-1 overflow-y-auto">{navigation(sidebarCollapsed)}</div>
 
