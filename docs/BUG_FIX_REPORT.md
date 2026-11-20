@@ -15,6 +15,7 @@
 | 404 fallback | PASS | Authenticated wildcard route renders a useful Not Found page. |
 | Reservation gate navigation | PASS | Reservation pass now uses React Router navigation and carries pass state/query. |
 | Dynamic categories | PASS | Entry and Vehicles load categories from `/vehicles/categories`; Entry has no 1–5 ID assumptions. |
+| High-confidence ALPR entry | PARTIAL | Uploaded-image high-confidence results can automatically call the entry API; low-confidence results require manual confirmation. Real model and footage accuracy are still NOT TESTED. |
 | AI readiness | NOT TESTED / BLOCKED BY EXTERNAL DEPENDENCY | Diagnostic reports both YOLO models missing and Tesseract/`ben` unavailable. |
 | Payment status | PARTIAL | Personal-wallet verification and official gateway configuration support remain verified only as code behavior; no merchant credentials or real-money verification available. |
 

@@ -68,3 +68,17 @@ The project diagnostic was executed on this environment and reported:
 
 These values describe the environment only. Suitable licensed weights and real
 authorized footage must be supplied before automatic recognition is claimed.
+
+## High-confidence automatic entry
+
+The Vehicle Entry page accepts an uploaded vehicle image and runs ALPR.
+If the OCR result has a valid normalized plate, confidence at or above
+`ALPR_CONFIDENCE_THRESHOLD` (default `0.80`), and a category that exists in
+the database, the frontend automatically submits the parking-entry API.
+Low-confidence, invalid, or category-ambiguous results remain on the page for
+operator review.
+
+Automatic entry still executes the backend blacklist check, active-session
+check, category validation, slot availability check, and role authorization.
+Without a plate-localization model or OCR language support, this remains an
+honest manual/test workflow rather than a guaranteed real-world detector.
