@@ -3,7 +3,7 @@ from fastapi import APIRouter,Depends,HTTPException,Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from app.core.database import get_db
-from app.models.all_models import Vehicle,ParkingSlot,SlotStatus,ParkingRecord,ParkingStatus,Payment,PaymentMethod,PaymentStatus,Notification,Camera,CameraRole,PlateDetection
+from app.models.all_models import Vehicle,VehicleCategory,ParkingSlot,SlotStatus,ParkingRecord,ParkingStatus,Payment,PaymentMethod,PaymentStatus,Notification,Camera,CameraRole,PlateDetection
 from app.services.plate import normalize, parse_plate
 from app.services.blacklist import active_blacklist_entry
 from app.services.billing import calculate
@@ -38,7 +38,15 @@ def entry(payload:EntryIn,db:Session=Depends(get_db),user=Depends(require_roles(
             "Plate recognition requires manual verification before vehicle entry.",
         )
     plate = parsed["normalized_plate"] or normalize(payload.license_plate)
-    resolved_category_id = parsed.get("suggested_category_id") or payload.category_id
+    resolved_category_id = payload.category_id
+    if parsed.get("vehicle_category"):
+        suggested_category = db.query(VehicleCategory).filter(
+            VehicleCategory.category_name.ilike(parsed["vehicle_category"])
+        ).first()
+        if suggested_category:
+            resolved_category_id = suggested_category.category_id
+    if not db.get(VehicleCategory, resolved_category_id):
+        raise HTTPException(422, "Invalid vehicle category")
     blacklist_entry = active_blacklist_entry(db, plate)
     if blacklist_entry:
         create_notification(

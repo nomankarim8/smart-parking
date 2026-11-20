@@ -32,11 +32,11 @@ REGION_ALIASES = {
 }
 
 CLASS_TO_CATEGORY = {
-    "A": ("MOTORCYCLE", 1), "HA": ("MOTORCYCLE", 1), "LA": ("MOTORCYCLE", 1),
-    "KA": ("CAR", 2), "KHA": ("CAR", 2), "GA": ("CAR", 2), "BHA": ("CAR", 2), "GHA": ("CAR", 2),
-    "CHA": ("VAN", 3), "CAA": ("VAN", 3),
-    "JA": ("BUS", 4), "JHA": ("BUS", 4),
-    "TA": ("TRUCK", 5), "THA": ("TRUCK", 5), "DA": ("TRUCK", 5), "DHA": ("TRUCK", 5),
+    "A": "MOTORCYCLE", "HA": "MOTORCYCLE", "LA": "MOTORCYCLE",
+    "KA": "CAR", "KHA": "CAR", "GA": "CAR", "BHA": "CAR", "GHA": "CAR",
+    "CHA": "VAN", "CAA": "VAN",
+    "JA": "BUS", "JHA": "BUS",
+    "TA": "TRUCK", "THA": "TRUCK", "DA": "TRUCK", "DHA": "TRUCK",
 }
 
 
@@ -65,7 +65,7 @@ def canonical_region(value: str) -> str:
 
 
 def infer_category(class_code: str | None):
-    return CLASS_TO_CATEGORY.get(class_code or "", (None, None))
+    return CLASS_TO_CATEGORY.get(class_code or "")
 
 
 def parse_plate(raw_text: str) -> dict:
@@ -116,7 +116,7 @@ def parse_plate(raw_text: str) -> dict:
             prefix_tokens = prefix_tokens[:-1]
 
     region = canonical_region(" ".join(prefix_tokens))
-    category, category_id = infer_category(class_code)
+    category = infer_category(class_code)
     parts = [p for p in [region, class_code] if p]
     normalized_plate = ((" ".join(parts) + f" {series}-{vehicle_number}").strip())
 
@@ -129,7 +129,7 @@ def parse_plate(raw_text: str) -> dict:
         "series_number": series,
         "vehicle_number": vehicle_number,
         "vehicle_category": category,
-        "suggested_category_id": category_id,
+        "suggested_category_id": None,
         "valid": bool(region and class_code and series and vehicle_number),
     }
 

@@ -38,6 +38,8 @@ def list_vehicle_categories(db:Session=Depends(get_db),_=Depends(current_user)):
     ]
 @router.post("/",response_model=VehicleOut)
 def create_vehicle(payload:VehicleIn,db:Session=Depends(get_db),_=Depends(require_roles("SUPER_ADMIN","ADMIN","OPERATOR"))):
+    if not db.get(VehicleCategory, payload.category_id):
+        raise HTTPException(422, "Invalid vehicle category")
     n=normalize(payload.plate_number); existing=db.query(Vehicle).filter_by(normalized_plate=n).first()
     if existing: raise HTTPException(409,"Vehicle already exists")
     if active_blacklist_entry(db,n):
@@ -47,6 +49,8 @@ def create_vehicle(payload:VehicleIn,db:Session=Depends(get_db),_=Depends(requir
 def update_vehicle(vehicle_id:int,payload:VehicleIn,db:Session=Depends(get_db),_=Depends(require_roles("SUPER_ADMIN","ADMIN"))):
     v=db.get(Vehicle,vehicle_id)
     if not v: raise HTTPException(404,"Vehicle not found")
+    if not db.get(VehicleCategory, payload.category_id):
+        raise HTTPException(422, "Invalid vehicle category")
     normalized_plate=normalize(payload.plate_number)
     if normalized_plate != v.normalized_plate and active_blacklist_entry(db,normalized_plate):
         raise HTTPException(409,"Vehicle is on the active blacklist and cannot be assigned")

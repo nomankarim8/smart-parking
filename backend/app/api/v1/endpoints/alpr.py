@@ -9,13 +9,16 @@ from app.services.alpr import alpr_service
 from app.schemas.models import ALPRResponse
 from app.api.deps import current_user
 from app.services.media import media_root
+from app.core.database import get_db
+from app.models.all_models import VehicleCategory
+from sqlalchemy.orm import Session
 
 router=APIRouter()
 UPLOAD_DIR=media_root()
 IMAGE_SUFFIXES={"JPEG":".jpg","PNG":".png","WEBP":".webp","BMP":".bmp"}
 
 @router.post("/detect",response_model=ALPRResponse)
-async def detect(file:UploadFile=File(...),persist:bool=Query(default=True),_=Depends(current_user)):
+async def detect(file:UploadFile=File(...),persist:bool=Query(default=True),db:Session=Depends(get_db),_=Depends(current_user)):
     if file.content_type not in {"image/jpeg","image/png","image/webp","image/bmp"}:
         await file.close()
         raise HTTPException(400,"Please upload an image file")
@@ -47,6 +50,13 @@ async def detect(file:UploadFile=File(...),persist:bool=Query(default=True),_=De
         target=UPLOAD_DIR/f"{uuid4().hex}{IMAGE_SUFFIXES[image_format]}"
         target.write_bytes(data)
     result["input_image_url"]=f"/api/v1/alpr/media/{target.name}" if target else None
+    category_name = result.get("vehicle_category")
+    if category_name:
+        category = db.query(VehicleCategory).filter(
+            VehicleCategory.category_name.ilike(category_name)
+        ).first()
+        if category:
+            result["suggested_category_id"] = category.category_id
     return result
 
 

@@ -9,7 +9,8 @@ def test_bangla_car_ga():
     assert r["series_number"] == "12"
     assert r["vehicle_number"] == "3456"
     assert r["vehicle_category"] == "CAR"
-    assert r["suggested_category_id"] == 2
+    assert r["suggested_category_id"] is None
+    assert r["vehicle_category"] == "CAR"
 
 
 def test_bangla_motorcycle_la():
@@ -18,7 +19,7 @@ def test_bangla_motorcycle_la():
     assert r["class_bn"] == "ল"
     assert r["class_code"] == "LA"
     assert r["vehicle_category"] == "MOTORCYCLE"
-    assert r["suggested_category_id"] == 1
+    assert r["suggested_category_id"] is None
 
 
 def test_bangla_car_ka():

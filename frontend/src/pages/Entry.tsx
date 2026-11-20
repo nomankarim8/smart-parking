@@ -60,7 +60,26 @@ export default function Entry(){
       if(result.verification_required){
         setMsg('Manual verification required. Confirm the detected plate before entry.');
       } else {
-        setMsg('Plate recognized successfully. Category has been suggested automatically.');
+        const resolvedCategoryId = result.suggested_category_id || cat;
+        if (!resolvedCategoryId) {
+          setMsg('Plate recognized, but no matching vehicle category was found. Verify and select a category manually.');
+        } else {
+          setMsg('High-confidence plate detected. Creating automatic vehicle entry…');
+          try {
+            const entryResult = await api.post('/parking/entry', {
+              license_plate: result.normalized_plate || result.license_plate,
+              category_id: resolvedCategoryId,
+              ocr_confidence: result.confidence,
+              raw_ocr_text: result.raw_text,
+              entry_image_url: result.input_image_url || null,
+              plate_image_url: result.input_image_url || null,
+              camera_id: camera?.camera_id || null,
+            });
+            setMsg(`Automatic entry accepted. Slot ${entryResult.data.slot} assigned to ${entryResult.data.license_plate}.`);
+          } catch (entryError: any) {
+            setMsg(entryError?.response?.data?.detail || 'Automatic entry failed. The plate remains available for manual verification.');
+          }
+        }
       }
     }catch(e:any){
       setMsg(e?.response?.data?.detail||'ALPR scan failed');
