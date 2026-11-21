@@ -1,5 +1,5 @@
 services:
-  mysql:
+  mysql: 
     image: mysql:8.0
     restart: unless-stopped 
     environment:
