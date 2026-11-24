@@ -41,3 +41,4 @@ services:
     depends_on: [backend]
 volumes:
   mysql_data:
+  
