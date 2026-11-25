@@ -20,3 +20,4 @@ ALPR notes:
 - Examples: ঢাকা মেট্রো গ ১২-৩৪৫৬ -> DHAKA METRO GA 12-3456; ঢাকা মেট্রো ল ১৭-৭৫৪৪ -> DHAKA METRO LA 17-7544.
 - Low-confidence or structurally invalid OCR is flagged for manual verification.
 - For full-vehicle automatic plate localization, place a compatible trained plate detector at ai-models/plate_yolo.pt.
+ 
