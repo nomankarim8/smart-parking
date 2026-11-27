@@ -2,4 +2,3 @@
 cat > /mnt/data/smart-parking/ai-models/README.md <<'EOF'
 # AI Models\n\nPlace compatible trained model weights here:\n- `plate_yolo.pt` — license plate detector\n- `vehicle_yolo.pt` — vehicle detector (optional extension)\n\nDo not commit proprietary or large weight files to source control unless licensing permits it.\nEOF
 cat > /mnt/data/smart-parking/backend/app/services/__init__.py <<'EOF'
- 
