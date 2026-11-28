@@ -7,7 +7,7 @@
 - MySQL 8 or XAMPP MySQL
 - Node.js 20+ (22 LTS is suitable)
 - VS Code
- 
+
 ## Verify tools
 
 ```powershell
